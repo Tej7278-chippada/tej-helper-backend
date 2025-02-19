@@ -28,6 +28,14 @@ const userSchema = new mongoose.Schema({
     state: { type: String, required: true },
     pincode: { type: String, required: true },
   },
+  ip: { type: String, required: true },
+  location: {
+    city: String,
+    region: String,
+    country_name: String,
+    latitude: { type: Number },
+    longitude: { type: Number },
+  },
   likedProducts: { type: [mongoose.Schema.Types.ObjectId], ref: 'Post', default: [] },
   wishlist: [{
     type: mongoose.Schema.Types.ObjectId, 

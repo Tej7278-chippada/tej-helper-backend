@@ -33,7 +33,7 @@ const upload = multer({
 
 // POST /api/auth/register
 router.post('/register', upload.single('profilePic'), async (req, res) => {
-  const { username, password, phone, email, address } = req.body;
+  const { username, password, phone, email, address, ip, location } = req.body;
 
   // Username and password validation
   const usernameRegex = /^[A-Z][A-Za-z0-9@_-]{5,}$/;
@@ -76,14 +76,15 @@ router.post('/register', upload.single('profilePic'), async (req, res) => {
     }
 
     // Create and save the new user
-    const newUser = new User({ username, password, phone, email, profilePic: profilePicBuffer, address: JSON.parse(address)});
+    const newUser = new User({ username, password, phone, email, profilePic: profilePicBuffer, address: JSON.parse(address), ip,
+      location: JSON.parse(location),});
     await newUser.save();
 
     // Send email notification
     await transporter.sendMail({
       from: process.env.EMAIL_USER,
       to: email,
-      subject: 'Welcome to SettleMate',
+      subject: 'Welcome to Helper',
       text: `Your Helper account has username of ${username} created successfully, and binded with this mail id ${email}.`,
     });
 
