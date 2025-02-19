@@ -303,6 +303,22 @@ router.get('/:userId', authMiddleware, async (req, res) => {
   }
 });
 
+// Route to update user location
+router.put('/:userId/location', authMiddleware, async (req, res) => {
+  const { userId } = req.params;
+  const { location } = req.body;
+
+  if (req.user.id !== userId) return res.status(403).json({ message: 'Unauthorized access' });
+
+  try {
+    const user = await User.findByIdAndUpdate(userId, { location }, { new: true });
+    if (!user) return res.status(404).json({ message: 'User not found' });
+    res.json(user);
+  } catch (err) {
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
 // Route to delete user account
 router.delete('/:id', authMiddleware, async (req, res) => {
   const { id } = req.params;
