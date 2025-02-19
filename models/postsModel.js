@@ -1,0 +1,22 @@
+// models/postsModel.js
+const mongoose = require('mongoose');
+
+const PostSchema = new mongoose.Schema({
+  title: { type: String, required: true },
+  price: { type: Number, required: true },
+  categories: {type: String, enum: ['Paid', 'UnPaid', 'Emergency'], required: true},
+  gender: { type: String, enum: ['Male', 'Female', 'Kids'], required: true },
+  peopleCount: { type: Number },
+  postStatus: { type: String, enum: ['Active', 'InActive', 'Closed'] },
+//   stockCount: { type: Number },
+  serviceDays: { type: Number, required: true },
+  description: { type: String, required: true},
+  media: [Buffer], // Store images as Buffer data
+//   videos: [String],
+  likes: { type: Number, default: 0 },
+  comments: [{ text: String, username: String, createdAt: { type: Date, default: Date.now } }],
+//   sellerTitle: { type: String, required: true }, // Bind to seller's title
+  userCode: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true } // Bind to seller's ID
+});
+
+module.exports = mongoose.model('Post', PostSchema);

@@ -1,6 +1,14 @@
 // models/userModel.js
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
+const crypto = require('crypto');
+
+// Function to generate unique seller ID
+const generateUserCode = () => {
+  const letters = crypto.randomBytes(3).toString('hex').toUpperCase().slice(0, 3); // First 3 characters as random uppercase letters
+  const numbers = crypto.randomBytes(3).toString('hex').slice(0, 5); // Remaining 5 characters as numbers
+  return letters + numbers;
+};
 
 // Define user schema
 const userSchema = new mongoose.Schema({
@@ -11,7 +19,21 @@ const userSchema = new mongoose.Schema({
   phone: { type: String, required: true },
   groups: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Group' }], // Array of group IDs
   otp: { type: Number },
-  otpExpiry: { type: Date }
+  otpExpiry: { type: Date },
+  userCode: { type: String, required: true, unique: true, default: generateUserCode },
+  address: {
+    street: { type: String, required: true },
+    area: { type: String, required: true },
+    city: { type: String, required: true },
+    state: { type: String, required: true },
+    pincode: { type: String, required: true },
+  },
+  likedProducts: { type: [mongoose.Schema.Types.ObjectId], ref: 'Post', default: [] },
+  wishlist: [{
+    type: mongoose.Schema.Types.ObjectId, 
+    ref: 'Post', 
+    addedAt: { type: Date, default: Date.now }
+  }],
 });
 
 // Hash the password before saving the user
