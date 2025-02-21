@@ -25,6 +25,7 @@ app.use(cors());
 app.use('/api/auth', authRoutes);
 app.use('/api/groups', groupRoutes);
 app.use('/api/group-transactions', groupTransactionRoutes);
+app.use('/api/posts', require('./routes/postsRoutes'));
 
 // Define your route to serve images by ID
 // app.get('/:id', async (req, res) => {

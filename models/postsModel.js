@@ -15,8 +15,8 @@ const PostSchema = new mongoose.Schema({
 //   videos: [String],
   likes: { type: Number, default: 0 },
   comments: [{ text: String, username: String, createdAt: { type: Date, default: Date.now } }],
-//   sellerTitle: { type: String, required: true }, // Bind to seller's title
-  userCode: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true } // Bind to seller's ID
+  userCode: { type: String, required: true }, // Bind to users's code
+  userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true } // Bind to users's ID
 });
 
 module.exports = mongoose.model('Post', PostSchema);
