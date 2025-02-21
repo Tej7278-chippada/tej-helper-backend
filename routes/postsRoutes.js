@@ -191,23 +191,23 @@ router.put('/:id', authMiddleware, upload.array('media', 5), async (req, res) =>
   }
 });
 
-// Delete product (only by the seller who added it)
-// router.delete('/:id', authMiddleware, async (req, res) => {
-//   try {
-//     const { id } = req.params;
-//     const sellerId = req.seller.id;
+// Delete post (only by the user who posted it)
+router.delete('/:id', authMiddleware, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user.id;
 
-//     const product = await Product.findOneAndDelete({ _id: id, sellerId });
-//     if (!product) {
-//       return res.status(403).json({ message: 'You are not authorized to delete this product' });
-//     }
+    const post = await postsModel.findOneAndDelete({ _id: id, userId });
+    if (!post) {
+      return res.status(403).json({ message: 'You are not authorized to delete this post' });
+    }
 
-//     res.json({ message: 'Product deleted successfully' });
-//   } catch (err) {
-//     console.error('Error deleting product:', err);
-//     res.status(500).json({ message: 'Error deleting product' });
-//   }
-// });
+    res.json({ message: 'Post deleted successfully' });
+  } catch (err) {
+    console.error('Error deleting post:', err);
+    res.status(500).json({ message: 'Error deleting post' });
+  }
+});
 
 
 // Like a product
