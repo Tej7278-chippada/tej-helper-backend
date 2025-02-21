@@ -311,7 +311,7 @@ router.put('/:userId/location', authMiddleware, async (req, res) => {
   if (req.user.id !== userId) return res.status(403).json({ message: 'Unauthorized access' });
 
   try {
-    const user = await User.findByIdAndUpdate(userId, { location }, { new: true });
+    const user = await User.findByIdAndUpdate(userId, { location, ip: req.ip }, { new: true });
     if (!user) return res.status(404).json({ message: 'User not found' });
     res.json(user);
   } catch (err) {
