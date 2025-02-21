@@ -140,55 +140,56 @@ router.get('/', async (req, res) => {
 });
 
 // Update product (only by the seller who added it)
-// router.put('/:id', authMiddleware, upload.array('media', 5), async (req, res) => {
-//   try {
-//     const { id } = req.params;
-//     const sellerId = req.seller.id;
+router.put('/:id', authMiddleware, upload.array('media', 5), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user.id;
 
-//     const product = await Product.findOne({ _id: id, sellerId });
-//     if (!product) {
-//       return res.status(403).json({ message: 'You are not authorized to update this product' });
-//     }
+    const post = await postsModel.findOne({ _id: id, userId });
+    if (!post) {
+      return res.status(403).json({ message: 'You are not authorized to update this post' });
+    }
 
-//     const { title, price, categories, gender, stockStatus, stockCount, deliveryDays, description, existingMedia } = req.body;
+    const { title, price, categories, gender, postStatus, peopleCount, serviceDays, description, existingMedia } = req.body;
 
-//     // Parse existingMedia to get the IDs of media to keep
-//     const mediaToKeep = existingMedia ? JSON.parse(existingMedia) : [];
+    // Parse existingMedia to get the IDs of media to keep
+    const mediaToKeep = existingMedia ? JSON.parse(existingMedia) : [];
 
-//     // Filter existing media to remove any that are not in mediaToKeep
-//     product.media = product.media.filter((_, index) => mediaToKeep.includes(index.toString()));
+    // Filter existing media to remove any that are not in mediaToKeep
+    post.media = post.media.filter((_, index) => mediaToKeep.includes(index.toString()));
 
-//     // Add new media if provided
-//     if (req.files) {
-//       const compressedImages = await Promise.all(
-//         req.files.map(async (file) => {
-//           const buffer = await sharp(file.buffer)
-//             .resize({ width: 800 })
-//             .jpeg({ quality: 20 })
-//             .toBuffer();
-//           return buffer;
-//         })
-//       );
-//       product.media.push(...compressedImages);
-//     }
+    // Add new media if provided
+    if (req.files) {
+      const compressedImages = await Promise.all(
+        req.files.map(async (file) => {
+          const buffer = await sharp(file.buffer)
+            .resize({ width: 800 })
+            .jpeg({ quality: 20 })
+            .toBuffer();
+          return buffer;
+        })
+      );
+      post.media.push(...compressedImages);
+    }
 
-//     // Update other product fields
-//     product.title = title;
-//     product.price = price;
-//     product.categories = categories;
-//     product.gender = gender;
-//     product.stockStatus = stockStatus;
-//     product.stockCount = stockStatus === 'In Stock' ? stockCount : undefined;
-//     product.deliveryDays = deliveryDays;
-//     product.description = description;
+    // Update other post fields
+    post.title = title;
+    post.price = price;
+    post.categories = categories;
+    post.gender = gender;
+    post.postStatus = postStatus;
+    // post.stockCount = stockStatus === 'In Stock' ? stockCount : undefined;
+    post.peopleCount = peopleCount;
+    post.serviceDays = serviceDays;
+    post.description = description;
 
-//     await product.save();
-//     res.json(product);
-//   } catch (err) {
-//     console.error('Error updating product:', err);
-//     res.status(500).json({ message: 'Error updating product' });
-//   }
-// });
+    await post.save();
+    res.json(post);
+  } catch (err) {
+    console.error('Error updating post:', err);
+    res.status(500).json({ message: 'Error updating post' });
+  }
+});
 
 // Delete product (only by the seller who added it)
 // router.delete('/:id', authMiddleware, async (req, res) => {
