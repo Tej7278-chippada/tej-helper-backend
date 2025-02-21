@@ -97,50 +97,47 @@ router.get('/my-posts', authMiddleware, async (req, res) => {
 
 
 // Get all products with optional filters
-// router.get('/', async (req, res) => {
-//   try {
-//     // Extract filter parameters from query string
-//     const { sellerId, title, price, categories, gender, stockStatus } = req.query;
+router.get('/', async (req, res) => {
+  try {
+    // Extract filter parameters from query string
+    const { title, price, categories, gender, postStatus } = req.query;
 
-//     // Build a filter object based on the available query parameters
-//     const filter = {};
-//     if (sellerId) {
-//         filter.sellerId = sellerId;
-//       }
-//     if (title) {
-//       filter.title = { $regex: title, $options: 'i' }; // Case-insensitive search for title
-//     }
-//     if (price) {
-//       const [minPrice, maxPrice] = price.split('-'); // Assuming the price range is passed as "minPrice-maxPrice"
-//       if (minPrice && maxPrice) {
-//         filter.price = { $gte: minPrice, $lte: maxPrice };
-//       }
-//     }
-//     if (categories) {
-//       filter.categories = { $in: categories.split(',') }; // Assuming multiple categories are passed as comma-separated string
-//     }
-//     if (gender) {
-//       filter.gender = gender; // Filter by gender
-//     }
-//     if (stockStatus) {
-//       filter.stockStatus = stockStatus; // Filter by stock status
-//     }
+    // Build a filter object based on the available query parameters
+    const filter = {};
+    if (title) {
+      filter.title = { $regex: title, $options: 'i' }; // Case-insensitive search for title
+    }
+    if (price) {
+      const [minPrice, maxPrice] = price.split('-'); // Assuming the price range is passed as "minPrice-maxPrice"
+      if (minPrice && maxPrice) {
+        filter.price = { $gte: minPrice, $lte: maxPrice };
+      }
+    }
+    if (categories) {
+      filter.categories = { $in: categories.split(',') }; // Assuming multiple categories are passed as comma-separated string
+    }
+    if (gender) {
+      filter.gender = gender; // Filter by gender
+    }
+    if (postStatus) {
+      filter.postStatus = postStatus; // Filter by post status
+    }
 
-//     // Fetch products with the applied filters
-//     const products = await Product.find(filter);
+    // Fetch products with the applied filters
+    const posts = await postsModel.find(filter);
 
-//     // Convert each product's media buffer to base64
-//     const productsWithBase64Media = products.map((product) => ({
-//       ...product._doc,
-//       media: product.media.map((buffer) => buffer.toString('base64')),
-//     }));
+    // Convert each product's media buffer to base64
+    const postsWithBase64Media = posts.map((post) => ({
+      ...post._doc,
+      media: post.media.map((buffer) => buffer.toString('base64')),
+    }));
 
-//     res.json(productsWithBase64Media);
-//   } catch (err) {
-//     console.error("Error fetching products:", err);
-//     res.status(500).json({ message: "Failed to fetch products" });
-//   }
-// });
+    res.json(postsWithBase64Media);
+  } catch (err) {
+    console.error("Error fetching products:", err);
+    res.status(500).json({ message: "Failed to fetch posts" });
+  }
+});
 
 // Update product (only by the seller who added it)
 // router.put('/:id', authMiddleware, upload.array('media', 5), async (req, res) => {
