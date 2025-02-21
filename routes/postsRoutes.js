@@ -16,7 +16,7 @@ const upload = multer({
   storage: multer.memoryStorage(),
 });
 
-// Add product (only by authenticated seller)
+// Add post (only by authenticated user)
 router.post('/add', authMiddleware, upload.array('media', 5), async (req, res) => {
   try {
     const { title, price, categories, gender, peopleCount, postStatus, serviceDays, description } = req.body;
@@ -60,26 +60,26 @@ router.post('/add', authMiddleware, upload.array('media', 5), async (req, res) =
   }
 });
 
-// Get products by authenticated seller
-// router.get('/my-posts', authMiddleware, async (req, res) => {
-//   try {
-//     const sellerId = req.seller.id;
-//     const products = await Product.find({ sellerId });
-//     if (!products) {
-//       return res.status(404).json({ message: 'No products found for this seller.' });
-//     }
-//     // Convert each product's media buffer to base64
-//     const productsWithBase64Media = products.map((product) => ({
-//       ...product._doc,
-//       media: product.media.map((buffer) => buffer.toString('base64')),
-//     }));
+// Get posts by authenticated user
+router.get('/my-posts', authMiddleware, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const posts = await postsModel.find({ userId });
+    if (!posts) {
+      return res.status(404).json({ message: 'No posts found for this user.' });
+    }
+    // Convert each post's media buffer to base64
+    const postsWithBase64Media = posts.map((post) => ({
+      ...post._doc,
+      media: post.media.map((buffer) => buffer.toString('base64')),
+    }));
     
-//     res.status(200).json( productsWithBase64Media );
-//   } catch (err) {
-//     console.error('Error fetching seller products:', err);
-//     res.status(500).json({ message: 'Failed to fetch seller products' });
-//   }
-// });
+    res.status(200).json( postsWithBase64Media );
+  } catch (err) {
+    console.error('Error fetching user posts:', err);
+    res.status(500).json({ message: 'Failed to fetch user posts' });
+  }
+});
 
 // Get all products (public)
 // router.get('/all', async (req, res) => {
