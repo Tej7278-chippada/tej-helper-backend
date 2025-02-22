@@ -20,6 +20,7 @@ app.use(cors());
 // Define routes
 app.use('/api/auth', authRoutes);
 app.use('/api/posts', require('./routes/postsRoutes'));
+app.use('/api/wishlist', require('./routes/wishlistRoutes'));
 
 // Define your route to serve images by ID
 // app.get('/:id', async (req, res) => {
@@ -38,4 +39,4 @@ app.use('/api/posts', require('./routes/postsRoutes'));
 //   });
 
 const PORT = process.env.PORT || 5012;
-app.listen(PORT, '0.0.0.0', () => console.log(`Server running on port http://192.168.54.172:${PORT}`));
+app.listen(PORT, '0.0.0.0', () => console.log(`Server running on port http://192.168.11.172:${PORT}`));
