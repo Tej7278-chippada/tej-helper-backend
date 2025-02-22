@@ -36,7 +36,7 @@ const userSchema = new mongoose.Schema({
     latitude: { type: Number },
     longitude: { type: Number },
   },
-  likedProducts: { type: [mongoose.Schema.Types.ObjectId], ref: 'Post', default: [] },
+  likedPosts: { type: [mongoose.Schema.Types.ObjectId], ref: 'Post', default: [] },
   wishlist: [{
     type: mongoose.Schema.Types.ObjectId, 
     ref: 'Post', 

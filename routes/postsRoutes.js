@@ -299,33 +299,33 @@ router.delete('/:id', authMiddleware, async (req, res) => {
 //   }
 // });
 
-// Get a single product by ID
-// router.get('/:id', async (req, res) => {
-//   try {
-//     const product = await Product.findById(req.params.id);
-//     if (!product) {
-//       return res.status(404).json({ message: 'Product not found' });
-//     }
+// Get a single post by ID
+router.get('/:id', async (req, res) => {
+  try {
+    const post = await postsModel.findById(req.params.id);
+    if (!post) {
+      return res.status(404).json({ message: 'Post not found' });
+    }
 
-//     const productWithBase64Media = {
-//       ...product._doc,
-//       media: product.media.map((buffer) => buffer.toString('base64')),
-//     };
+    const postWithBase64Media = {
+      ...post._doc,
+      media: post.media.map((buffer) => buffer.toString('base64')),
+    };
 
-//     if (req.seller) {
-//       // If the user is authenticated, include likedByUser info
-//       const sellerId = req.seller.id;
-//       const seller = await Seller.findById(sellerId);
-//       const isLiked = seller.likedProducts?.includes(product._id.toString());
-//       productWithBase64Media.likedByUser = isLiked;
-//     }
+    if (req.user) {
+      // If the user is authenticated, include likedByUser info
+      const userId = req.user.id;
+      const user = await User.findById(userId);
+      const isLiked = user.likedPosts?.includes(post._id.toString());
+      postWithBase64Media.likedByUser = isLiked;
+    }
 
-//     res.json(productWithBase64Media);
-//   } catch (err) {
-//     console.error('Error fetching product by ID:', err);
-//     res.status(500).json({ message: 'Error fetching product details' });
-//   }
-// });
+    res.json(postWithBase64Media);
+  } catch (err) {
+    console.error('Error fetching post by ID:', err);
+    res.status(500).json({ message: 'Error fetching post details' });
+  }
+});
 
 
 module.exports = router;
