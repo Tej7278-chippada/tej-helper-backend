@@ -217,9 +217,9 @@ router.delete('/:id', authMiddleware, async (req, res) => {
 //     const { id } = req.params;
 //     const userId = req.user.id; // Get the logged-in user ID from the middleware
 
-//     const product = await Product.findById(id);
-//     if (!product) {
-//       return res.status(404).json({ message: 'Product not found' });
+//     const post = await postsModel.findById(id);
+//     if (!post) {
+//       return res.status(404).json({ message: 'Post not found' });
 //     }
 
 //     const user = await User.findById(userId); // Get the user
@@ -227,24 +227,24 @@ router.delete('/:id', authMiddleware, async (req, res) => {
 //       return res.status(404).json({ message: 'User not found' });
 //     }
 
-//     // Check if user already liked the product
-//     const likedIndex = user.likedProducts?.indexOf(id);
+//     // Check if user already liked the posts
+//     const likedIndex = user.likedPosts?.indexOf(id);
 
 //     if (likedIndex !== -1) {
 //       // If already liked, remove the like
-//       user.likedProducts.splice(likedIndex, 1);
-//       product.likes = Math.max(product.likes - 1, 0); // Prevent negative likes
+//       user.likedPosts.splice(likedIndex, 1);
+//       post.likes = Math.max(post.likes - 1, 0); // Prevent negative likes
 //     } else {
 //       // If not liked, add the like
-//       user.likedProducts = user.likedProducts || [];
-//       user.likedProducts.push(id);
-//       product.likes += 1;
+//       user.likedPosts = user.likedPosts || [];
+//       user.likedPosts.push(id);
+//       post.likes += 1;
 //     }
 
 //     await user.save();
-//     await product.save();
+//     await post.save();
 
-//     res.status(200).json({ message: 'Like toggled successfully', likes: product.likes });
+//     res.status(200).json({ message: 'Like toggled successfully', likes: post.likes });
 //   } catch (error) {
 //     console.error('Error toggling likes:', error);
 //     res.status(500).json({ message: 'Error toggling likes' });

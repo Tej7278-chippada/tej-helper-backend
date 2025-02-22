@@ -2,6 +2,7 @@
 const express = require('express');
 require('dotenv').config(); // Load .env variables
 const authRoutes = require('./routes/authRoutes');
+const likesRoutes = require('./routes/likesRoutes');
 
 const cors = require('cors');
 const connectDB = require('./config/db');
@@ -21,6 +22,7 @@ app.use(cors());
 app.use('/api/auth', authRoutes);
 app.use('/api/posts', require('./routes/postsRoutes'));
 app.use('/api/wishlist', require('./routes/wishlistRoutes'));
+app.use("/api/likes", likesRoutes);
 
 // Define your route to serve images by ID
 // app.get('/:id', async (req, res) => {
