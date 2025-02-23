@@ -114,7 +114,8 @@ router.get('/', async (req, res) => {
       }
     }
     if (categories) {
-      filter.categories = { $in: categories.split(',') }; // Assuming multiple categories are passed as comma-separated string
+      filter.categories = categories; // Filter by categories
+      // filter.categories = { $in: categories.split(',') }; // Assuming multiple categories are passed as comma-separated string
     }
     if (gender) {
       filter.gender = gender; // Filter by gender
