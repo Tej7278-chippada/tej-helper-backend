@@ -253,34 +253,34 @@ router.delete('/:id', authMiddleware, async (req, res) => {
 
 
 // Add a comment
-// router.post('/:id/comment', authMiddleware, async (req, res) => {
-//   try {
-//     const { id } = req.params;
-//     const { text } = req.body;
-//     const user = req.user; // Extracted user info from the auth token
+router.post('/:id/comment', authMiddleware, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { text } = req.body;
+    const user = req.user; // Extracted user info from the auth token
 
-//     const product = await Product.findById(id); 
-//     // const product = await Product.findByIdAndUpdate(
-//     //   id,
-//     //   { $push: { comments: { text, createdAt: new Date() } } },
-//     //   { new: true }
-//     // );
-//     if (!product) {
-//       return res.status(404).json({ message: 'Product not found' });
-//     }
+    const post = await postsModel.findById(id); 
+    // const product = await Product.findByIdAndUpdate(
+    //   id,
+    //   { $push: { comments: { text, createdAt: new Date() } } },
+    //   { new: true }
+    // );
+    if (!post) {
+      return res.status(404).json({ message: 'Post not found' });
+    }
 
-//     const newComment = { text, createdAt: new Date(),
-//       username: user.tokenUsername, // Add username from token
-//      };
-//     product.comments.push(newComment);
+    const newComment = { text, createdAt: new Date(),
+      username: user.username, // Add username from token
+     };
+    post.comments.push(newComment);
 
-//     await product.save();
-//     res.status(200).json(product);
-//   } catch (error) {
-//     console.error('Error adding comment:', error);
-//     res.status(500).json({ message: 'Internal server error' });
-//   }
-// });
+    await post.save();
+    res.status(200).json(post);
+  } catch (error) {
+    console.error('Error adding comment:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+});
 
 // router.get('/:id', async (req, res) => {
 //   try {
