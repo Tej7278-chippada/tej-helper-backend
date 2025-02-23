@@ -16,7 +16,15 @@ const PostSchema = new mongoose.Schema({
   likes: { type: Number, default: 0 },
   comments: [{ text: String, username: String, createdAt: { type: Date, default: Date.now } }],
   userCode: { type: String, required: true }, // Bind to users's code
-  userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true } // Bind to users's ID
+  userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true }, // Bind to users's ID
+  ip: { type: String },
+  location: {
+    street: String, city: String,
+    area: String, state: String, accuracy: Number,
+    nation: String, pincode: Number, 
+    latitude: { type: Number },
+    longitude: { type: Number },
+  },
 });
 
 module.exports = mongoose.model('Post', PostSchema);
