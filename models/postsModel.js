@@ -25,6 +25,7 @@ const PostSchema = new mongoose.Schema({
     latitude: { type: Number },
     longitude: { type: Number },
   },
+  buyerIds: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }], // Array of buyer IDs
 });
 
 module.exports = mongoose.model('Post', PostSchema);
