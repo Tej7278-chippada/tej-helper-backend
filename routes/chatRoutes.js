@@ -7,7 +7,20 @@ const router = express.Router();
 // const Chat = require('../models/chatModel');
 // const auth = require('../middleware/auth');
 
-// Get chat history
+// Get chat history for post posted users
+router.get('/chatHistory', authMiddleware, async (req, res) => {
+  try {
+    const { buyerId } = req.query;
+    const chat = await chatModel.findOne({ buyerId }).populate("buyerId", "username profilePic");
+    if (!chat) return res.status(404).json({ message: "Chat not found" });
+
+    res.json(chat);
+  } catch (error) {
+    res.status(500).json({ message: "Error fetching chat history" });
+  }
+});
+
+// Get chat history for post intersted users
 router.get('/', authMiddleware, async (req, res) => {
   try {
     const { postId, buyerId } = req.query;
@@ -21,7 +34,7 @@ router.get('/', authMiddleware, async (req, res) => {
   }
 });
 
-// Send a message
+// Send a message by the user who intersts on the post
 router.post('/send', authMiddleware, async (req, res) => {
   try {
     const { postId, sellerId, buyerId, text } = req.body;
@@ -92,6 +105,7 @@ router.get('/chatsOfPost', authMiddleware, async (req, res) => {
   }
 });
 
+// message sending route for post posted user on chatHistoryPage
 router.post('/sendMessage', authMiddleware, async (req, res) => {
   try {
     const { postId, sellerId, buyerId, text } = req.body;
@@ -103,15 +117,15 @@ router.post('/sendMessage', authMiddleware, async (req, res) => {
     }
 
     // Add buyerId to the post's buyerIds array if not already present
-    const post = await postsModel.findById(postId);
-    if (!post) {
-      return res.status(404).json({ message: 'Post not found' });
-    }
+    // const post = await postsModel.findById(postId);
+    // if (!post) {
+    //   return res.status(404).json({ message: 'Post not found' });
+    // }
 
-    if (!post.buyerIds.includes(buyerId)) {
-      post.buyerIds.push(buyerId);
-      await post.save();
-    }
+    // if (!post.buyerIds.includes(buyerId)) {
+    //   post.buyerIds.push(buyerId);
+    //   await post.save();
+    // }
 
     let chat = await chatModel.findOne({ postId, buyerId });
 

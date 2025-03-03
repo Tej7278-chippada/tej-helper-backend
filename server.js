@@ -42,4 +42,4 @@ app.use('/api/chats', require('./routes/chatRoutes'));
 //   });
 
 const PORT = process.env.PORT || 5012;
-app.listen(PORT, '0.0.0.0', () => console.log(`Server running on port http://192.168.55.172:${PORT}`));
+app.listen(PORT, '0.0.0.0', () => console.log(`Server running on port http://192.168.204.172:${PORT}`));
