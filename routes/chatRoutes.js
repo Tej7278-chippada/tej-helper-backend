@@ -20,7 +20,7 @@ router.get('/chatHistory', authMiddleware, async (req, res) => {
   }
 });
 
-// Get chat history for post intersted users
+// Get chat history for post interested users
 router.get('/', authMiddleware, async (req, res) => {
   try {
     const { postId, buyerId } = req.query;
@@ -34,7 +34,7 @@ router.get('/', authMiddleware, async (req, res) => {
   }
 });
 
-// Send a message by the user who intersts on the post
+// Send a message by the user who interests on the post
 router.post('/send', authMiddleware, async (req, res) => {
   try {
     const { postId, sellerId, buyerId, text } = req.body;
@@ -62,11 +62,19 @@ router.post('/send', authMiddleware, async (req, res) => {
       chat = new chatModel({ postId, sellerId, buyerId, messages: [] });
     }
 
-    chat.messages.push({ senderId: buyerId, text });
+    // chat.messages.push({ senderId: buyerId, text });
+    const newMessage = { senderId: buyerId, text, createdAt: new Date() };
+    chat.messages.push(newMessage);
     chat.lastMessageAt = Date.now();
     await chat.save();
 
-    res.status(201).json({ message: 'Message sent successfully' });
+    let newMessageData = { newMessage, lastMessageAt : chat.lastMessageAt  };
+
+    // Emit the new message to the room
+    const room = `${postId}_${buyerId}`;
+    req.io.to(room).emit('receiveMessage', newMessage); // Use Socket.IO to broadcast the message
+
+    res.status(201).json({ message: 'Message sent successfully', newMessage });
   } catch (error) {
     console.error('Error in /send:', error); // Debugging
     res.status(500).json({ message: 'Error sending message', error: error.message });
@@ -133,11 +141,17 @@ router.post('/sendMessage', authMiddleware, async (req, res) => {
       chat = new chatModel({ postId, sellerId, buyerId, messages: [] });
     }
 
-    chat.messages.push({ senderId: sellerId, text });
+    // chat.messages.push({ senderId: sellerId, text });
+    const newMessage = { senderId: sellerId, text, createdAt: new Date() };
+    chat.messages.push(newMessage);
     chat.lastMessageAt = Date.now();
     await chat.save();
 
-    res.status(201).json({ message: 'Message sent successfully' });
+    // Emit the new message to the room
+    const room = `${postId}_${buyerId}`;
+    req.io.to(room).emit('receiveMessage', newMessage); // Use Socket.IO to broadcast the message
+
+    res.status(201).json({ message: 'Message sent successfully', newMessage });
   } catch (error) {
     console.error('Error in /send:', error); // Debugging
     res.status(500).json({ message: 'Error sending message', error: error.message });
