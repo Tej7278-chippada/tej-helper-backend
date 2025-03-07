@@ -76,4 +76,4 @@ io.on('connection', (socket) => {
 });
 
 const PORT = process.env.PORT || 5012;
-server.listen(PORT, '0.0.0.0', () => console.log(`Server running on port http://192.168.204.172:${PORT}`));
+server.listen(PORT, '0.0.0.0', () => console.log(`Server running on port http://192.168.31.172:${PORT}`));
