@@ -19,7 +19,7 @@ const upload = multer({
 // Add post (only by authenticated user)
 router.post('/add', authMiddleware, upload.array('media', 5), async (req, res) => {
   try {
-    const { title, price, categories, gender, peopleCount, serviceDays, description, location } = req.body;
+    const { title, categories, price, gender, peopleCount, serviceDays, description, location } = req.body;
 
     const userId = req.user.id;
     const user = await User.findById(userId);
@@ -41,8 +41,8 @@ router.post('/add', authMiddleware, upload.array('media', 5), async (req, res) =
       userId,
       userCode: user.userCode,
       title,
-      price,
       categories,
+      price : categories === 'UnPaid' ? 0 : price,
       gender,
       peopleCount,
       // postStatus,
@@ -177,8 +177,8 @@ router.put('/:id', authMiddleware, upload.array('media', 5), async (req, res) =>
 
     // Update other post fields
     post.title = title;
-    post.price = price;
     post.categories = categories;
+    post.price = categories === 'UnPaid' ? 0 : price;
     post.gender = gender;
     post.postStatus = postStatus;
     // post.stockCount = stockStatus === 'In Stock' ? stockCount : undefined;
