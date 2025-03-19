@@ -26,6 +26,7 @@ const PostSchema = new mongoose.Schema({
     longitude: { type: Number },
   },
   buyerIds: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }], // Array of buyer IDs
+  helperIds: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }], // Array of helper IDs
 });
 
 module.exports = mongoose.model('Post', PostSchema);

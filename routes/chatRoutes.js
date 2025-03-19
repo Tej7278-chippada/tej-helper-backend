@@ -158,4 +158,33 @@ router.post('/sendMessage', authMiddleware, async (req, res) => {
   }
 });
 
+router.post('/toggle-helper', authMiddleware, async (req, res) => {
+  try {
+    const { postId, buyerId } = req.body;
+    const post = await postsModel.findById(postId);
+    
+    if (!post) return res.status(404).json({ message: 'Post not found' });
+
+    const isHelper = post.helperIds.includes(buyerId);
+
+    if (isHelper) {
+      // Remove buyer from helpers
+      post.helperIds = post.helperIds.filter(id => id.toString() !== buyerId);
+    } else {
+      if (post.helperIds.length >= post.peopleCount) {
+        return res.status(400).json({ message: 'Helper limit reached' });
+      }
+      post.helperIds.push(buyerId);
+    }
+
+    // Update postStatus
+    post.postStatus = post.helperIds.length === post.peopleCount ? 'Closed' : 'Active';
+    await post.save();
+
+    res.json({ message: isHelper ? 'Removed from helpers' : 'Added to helpers', helperIds: post.helperIds });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error', error });
+  }
+});
+
 module.exports = router;
