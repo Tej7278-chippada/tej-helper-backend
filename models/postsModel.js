@@ -24,6 +24,7 @@ const PostSchema = new mongoose.Schema({
     nation: String, pincode: Number, 
     latitude: { type: Number },
     longitude: { type: Number },
+    address: String, 
   },
   buyerIds: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }], // Array of buyer IDs
   helperIds: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }], // Array of helper IDs

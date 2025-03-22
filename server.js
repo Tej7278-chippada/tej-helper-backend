@@ -58,11 +58,11 @@ app.use('/api/chats', require('./routes/chatRoutes'));
 //   });
 
 io.on('connection', (socket) => {
-    console.log('a user connected:', socket.id);
+    // console.log('a user connected:', socket.id);
 
     socket.on('joinRoom', (room) => {
         socket.join(room);
-        console.log(`User ${socket.id} joined room ${room}`);
+        // console.log(`User ${socket.id} joined room ${room}`);
     });
 
     // socket.on('sendMessage', async (data) => {
@@ -71,7 +71,7 @@ io.on('connection', (socket) => {
     // });
 
     socket.on('disconnect', () => {
-        console.log('user disconnected:', socket.id);
+        // console.log('user disconnected:', socket.id);
     });
 });
 
