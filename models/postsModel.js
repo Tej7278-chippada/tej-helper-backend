@@ -10,6 +10,9 @@ const PostSchema = new mongoose.Schema({
   postStatus: { type: String, enum: ['Active', 'InActive', 'Closed'], default: 'Active' },
 //   stockCount: { type: Number },
   serviceDays: { type: Number, required: true },
+  serviceDate: { type: Date }, // New field for service date
+  timeFrom: { type: Date }, // New field for time from
+  timeTo: { type: Date }, // New field for time to
   description: { type: String, required: true},
   media: [Buffer], // Store images as Buffer data
 //   videos: [String],
