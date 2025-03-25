@@ -42,6 +42,9 @@ const userSchema = new mongoose.Schema({
     ref: 'Post', 
     addedAt: { type: Date, default: Date.now }
   }],
+  notificationToken: { type: String }, // For browser push notifications
+  notificationEnabled: { type: Boolean, default: false },
+  notificationRadius: { type: Number, default: 200 }, // Default 10km radius
 });
 
 // Hash the password before saving the user

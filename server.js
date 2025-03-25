@@ -40,6 +40,7 @@ app.use('/api/posts', require('./routes/postsRoutes'));
 app.use('/api/wishlist', require('./routes/wishlistRoutes'));
 app.use("/api/likes", likesRoutes);
 app.use('/api/chats', require('./routes/chatRoutes'));
+app.use('/api/notifications', require('./routes/notificationRoutes'));
 
 // Define your route to serve images by ID
 // app.get('/:id', async (req, res) => {

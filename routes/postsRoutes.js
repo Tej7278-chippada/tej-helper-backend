@@ -6,9 +6,45 @@ const sharp = require('sharp');
 const authMiddleware = require('../middleware/authMiddleware');
 const User = require('../models/userModel');
 const postsModel = require('../models/postsModel');
+const Notification = require('../models/notificationModel');
 
 // Configure multer to store files in memory as buffers
 // const storage = multer.memoryStorage();
+
+// Helper function to calculate distance between two coordinates (Haversine formula)
+function calculateDistance(lat1, lon1, lat2, lon2) {
+  const R = 6371; // Radius of the Earth in km
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a = 
+    Math.sin(dLat/2) * Math.sin(dLat/2) +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
+    Math.sin(dLon/2) * Math.sin(dLon/2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  return R * c; // Distance in km
+}
+
+// Add this function to send push notifications
+const sendPushNotification = async (subscription, message, postId) => {
+  const payload = JSON.stringify({
+    title: 'New Post Nearby',
+    body: message,
+    icon: '/logo192.png',
+    data: { url: `/post/${postId}` }
+  });
+
+  await fetch(process.env.WEB_PUSH_ENDPOINT, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${process.env.WEB_PUSH_AUTH_TOKEN}`
+    },
+    body: JSON.stringify({
+      subscription,
+      payload
+    })
+  });
+};
 
 // Initialize multer with the storage configuration
 const upload = multer({
@@ -58,6 +94,89 @@ router.post('/add', authMiddleware, upload.array('media', 5), async (req, res) =
     });
 
     await post.save();
+
+    // Initialize empty array for users to notify
+    let usersToNotify = [];
+
+    // Find nearby users and send notifications
+    const postLocation = post.location;
+
+    if (postLocation && postLocation.latitude && postLocation.longitude) {
+      const nearbyUsers = await User.find({
+        'location.latitude': { $exists: true },
+        'location.longitude': { $exists: true }
+      });
+
+      usersToNotify = nearbyUsers.filter(user => {
+        if (!user.location.latitude || !user.location.longitude) return false;
+        const distance = calculateDistance(
+          postLocation.latitude,
+          postLocation.longitude,
+          user.location.latitude,
+          user.location.longitude
+        );
+        return distance <= 300; // 10km radius
+      });
+
+      // Create notifications for nearby users
+      await Promise.all(usersToNotify.map(async (user) => {
+        if (user._id.toString() !== post.userId.toString()) { // Don't notify the post creator
+          const notification = new Notification({
+            userId: user._id,
+            postId: post._id,
+            message: `New post "${post.title}" near your location!`
+          });
+          await notification.save();
+          
+          // Emit socket notification
+          req.io.to(user._id.toString()).emit('newNotification', {
+            postId: post._id,
+            message: notification.message
+          });
+
+          // Send push notification if enabled
+          if (user.notificationEnabled && user.notificationToken) {
+            try {
+              const subscription = JSON.parse(user.notificationToken);
+              await sendPushNotification(
+                subscription,
+                `New post "${post.title}" near your location tej!`,
+                post._id  // Pass the post ID here
+              );
+              console.log('Notification pushed..');
+            } catch (error) {
+              console.error('Error sending push notification:', error);
+            }
+          }
+        
+        }
+      }));
+    }
+
+    // After post is saved, send push notifications
+    // await Promise.all(usersToNotify.map(async (user) => {
+    //   if (user.notificationEnabled && user.notificationToken) {
+    //     try {
+    //       const subscription = JSON.parse(user.notificationToken);
+    //       await sendPushNotification(
+    //         subscription,
+    //         `New post "${post.title}" near your location!`
+    //       );
+    //     } catch (error) {
+    //       console.error('Error sending push notification:', error);
+    //     }
+    //   }
+      
+    //   // Still create in-app notification
+    //   const notification = new Notification({
+    //     userId: user._id,
+    //     postId: post._id,
+    //     message: `New post "${post.title}" near your location!`
+    //   });
+    //   await notification.save();
+    // }));
+
+
     res.status(201).json({ message: 'Post added successfully.', post });
   } catch (err) {
     console.error('Error adding post:', err);
