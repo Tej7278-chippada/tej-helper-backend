@@ -133,6 +133,7 @@ router.post('/add', authMiddleware, upload.array('media', 5), async (req, res) =
             postId: post._id,
             message: notification.message
           });
+          console.log("Notification emitted..");
 
           // Send push notification if enabled
           if (user.notificationEnabled && user.notificationToken) {
