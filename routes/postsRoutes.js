@@ -128,12 +128,17 @@ router.post('/add', authMiddleware, upload.array('media', 5), async (req, res) =
           });
           await notification.save();
           
-          // Emit socket notification
-          req.io.to(user._id.toString()).emit('newNotification', {
-            postId: post._id,
-            message: notification.message
-          });
-          console.log("Notification emitted..");
+          // Only emit socket notification if user has notifications enabled
+          if (user.notificationEnabled) {
+            // Emit socket notification
+            req.io.to(user._id.toString()).emit('newNotification', {
+              postId: post._id,
+              message: notification.message
+            });
+            // console.log("Notification emitted..");
+          } else {
+            // console.log("Notification stored but not emitted (user disabled)");
+          }
 
           // Send push notification if enabled
           if (user.notificationEnabled && user.notificationToken) {
@@ -144,9 +149,9 @@ router.post('/add', authMiddleware, upload.array('media', 5), async (req, res) =
                 `New post "${post.title}" near your location tej!`,
                 post._id  // Pass the post ID here
               );
-              console.log('Notification pushed..');
+              // console.log('Notification pushed..');
             } catch (error) {
-              console.error('Error sending push notification:', error);
+              // console.error('Error sending push notification:', error);
             }
           }
         
