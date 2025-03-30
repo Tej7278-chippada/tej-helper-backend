@@ -78,4 +78,14 @@ router.get('/notification-status', authMiddleware, async (req, res) => {
   }
 });
 
+// Delete all notifications for a user
+router.delete('/', authMiddleware, async (req, res) => {
+  try {
+    await Notification.deleteMany({ userId: req.user.id });
+    res.json({ success: true, message: 'All notifications cleared' });
+  } catch (error) {
+    res.status(500).json({ message: 'Error clearing notifications', error: error.message });
+  }
+});
+
 module.exports = router;
