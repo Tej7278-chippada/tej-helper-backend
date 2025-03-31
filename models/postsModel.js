@@ -31,8 +31,10 @@ const PostSchema = new mongoose.Schema({
   },
   buyerIds: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }], // Array of buyer IDs
   helperIds: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }], // Array of helper IDs
+  createdAt: { type: Date, default: Date.now },
+  updatedAt: { type: Date },  // Manually handle updatedAt
 },
-{ timestamps: true }
+// { timestamps: true }
 );
 
 module.exports = mongoose.model('Post', PostSchema);
