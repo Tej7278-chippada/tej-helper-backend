@@ -31,6 +31,8 @@ const PostSchema = new mongoose.Schema({
   },
   buyerIds: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }], // Array of buyer IDs
   helperIds: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }], // Array of helper IDs
-});
+},
+{ timestamps: true }
+);
 
 module.exports = mongoose.model('Post', PostSchema);

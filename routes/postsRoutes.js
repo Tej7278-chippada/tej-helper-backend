@@ -90,7 +90,8 @@ router.post('/add', authMiddleware, upload.array('media', 5), async (req, res) =
       description,
       media: compressedImages,
       location: JSON.parse(location), // Parse the location string to object
-      ip: req.ip 
+      ip: req.ip,
+      createdAt: new Date(),
     });
 
     await post.save();
@@ -226,11 +227,11 @@ router.get('/my-posts', authMiddleware, async (req, res) => {
 
 
 
-// Get all products with optional filters
+// Get all posts with optional filters
 router.get('/', async (req, res) => {
   try {
     // Extract filter parameters from query string
-    const { title, price, categories, gender, postStatus } = req.query;
+    const { title, price, categories, gender, postStatus, skip = 0, limit = 12 } = req.query;
 
     // Build a filter object based on the available query parameters
     const filter = {};
@@ -254,10 +255,13 @@ router.get('/', async (req, res) => {
       filter.postStatus = postStatus; // Filter by post status
     }
 
-    // Fetch products with the applied filters
-    const posts = await postsModel.find(filter);
+    // Fetch posts with the applied filters
+    const posts = await postsModel.find(filter)
+      .skip(parseInt(skip))
+      .limit(parseInt(limit))
+      .sort({ createdAt: -1 }); // Newest first
 
-    // Convert each product's media buffer to base64
+    // Convert each post's media buffer to base64
     const postsWithBase64Media = posts.map((post) => ({
       ...post._doc,
       media: post.media.map((buffer) => buffer.toString('base64')),
@@ -317,6 +321,7 @@ router.put('/:id', authMiddleware, upload.array('media', 5), async (req, res) =>
     post.timeTo = timeTo;
     post.description = description;
     post.ip = req.ip;
+    post.updatedAt = new Date();
 
     // Update location data
     if (location) {
