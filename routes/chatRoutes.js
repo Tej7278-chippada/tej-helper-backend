@@ -63,7 +63,7 @@ router.post('/send', authMiddleware, async (req, res) => {
     }
 
     // chat.messages.push({ senderId: buyerId, text });
-    const newMessage = { senderId: buyerId, text, createdAt: new Date() };
+    const newMessage = { senderId: buyerId, text, createdAt: new Date(), seen: false };
     chat.messages.push(newMessage);
     chat.lastMessageAt = Date.now();
     await chat.save();
@@ -72,7 +72,8 @@ router.post('/send', authMiddleware, async (req, res) => {
 
     // Emit the new message to the room
     const room = `${postId}_${buyerId}`;
-    req.io.to(room).emit('receiveMessage', newMessage); // Use Socket.IO to broadcast the message
+    req.io.to(room).emit('receiveMessage', {...newMessage, seen: false // Initially false
+    }); // Use Socket.IO to broadcast the message
 
     res.status(201).json({ message: 'Message sent successfully', newMessage });
   } catch (error) {
@@ -142,14 +143,15 @@ router.post('/sendMessage', authMiddleware, async (req, res) => {
     }
 
     // chat.messages.push({ senderId: sellerId, text });
-    const newMessage = { senderId: sellerId, text, createdAt: new Date() };
+    const newMessage = { senderId: sellerId, text, createdAt: new Date(), seen: false };
     chat.messages.push(newMessage);
     chat.lastMessageAt = Date.now();
     await chat.save();
 
     // Emit the new message to the room
     const room = `${postId}_${buyerId}`;
-    req.io.to(room).emit('receiveMessage', newMessage); // Use Socket.IO to broadcast the message
+    req.io.to(room).emit('receiveMessage', {...newMessage, seen: false // Initially false
+      }); // Use Socket.IO to broadcast the message
 
     res.status(201).json({ message: 'Message sent successfully', newMessage });
   } catch (error) {
@@ -184,6 +186,37 @@ router.post('/toggle-helper', authMiddleware, async (req, res) => {
     res.json({ message: isHelper ? 'Removed from helpers' : 'Added to helpers', helperIds: post.helperIds });
   } catch (error) {
     res.status(500).json({ message: 'Server error', error });
+  }
+});
+
+// Mark messages as seen
+router.post('/markAsSeen', authMiddleware, async (req, res) => {
+  try {
+    const { postId, buyerId, messageIds } = req.body;
+    
+    const chat = await chatModel.findOne({ postId, buyerId });
+    if (!chat) {
+      return res.status(404).json({ message: 'Chat not found' });
+    }
+
+    // Update all specified messages to seen=true
+    const updatedMessages = chat.messages.map(msg => {
+      if (messageIds.includes(msg._id.toString())) {
+        return { ...msg.toObject(), seen: true };
+      }
+      return msg;
+    });
+
+    chat.messages = updatedMessages;
+    await chat.save();
+
+    // Emit the seen status update to the room
+    const room = `${postId}_${buyerId}`;
+    req.io.to(room).emit('messagesSeen', messageIds);
+
+    res.status(200).json({ message: 'Messages marked as seen' });
+  } catch (error) {
+    res.status(500).json({ message: 'Error marking messages as seen', error: error.message });
   }
 });
 
