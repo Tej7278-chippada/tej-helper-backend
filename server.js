@@ -65,21 +65,27 @@ app.use('/api/notifications', require('./routes/notificationRoutes'));
 //   });
 
 io.on('connection', (socket) => {
-    // console.log('a user connected:', socket.id);
+  // console.log('a user connected:', socket.id);
 
-    socket.on('joinRoom', (room) => {
-        socket.join(room);
-        // console.log(`User ${socket.id} joined room ${room}`);
-    });
+  socket.on('joinRoom', (room) => {
+      socket.join(room);
+      // console.log(`User ${socket.id} joined room ${room}`);
+  });
 
-    // socket.on('sendMessage', async (data) => {
-    //     const { room, message } = data;
-    //     io.to(room).emit('receiveMessage', message);
-    // });
+  // socket.on('sendMessage', async (data) => {
+  //     const { room, message } = data;
+  //     io.to(room).emit('receiveMessage', message);
+  // });
 
-    socket.on('disconnect', () => {
-        // console.log('user disconnected:', socket.id);
-    });
+  // Add this new event listener for real-time seen status
+  socket.on('messageSeen', ({ room, messageId }) => {
+    // Broadcast to all in the room except the sender
+    socket.to(room).emit('messageSeenUpdate', { messageId });
+  });
+
+  socket.on('disconnect', () => {
+    // console.log('user disconnected:', socket.id);
+  });
 });
 
 const PORT = process.env.PORT || 5012;
