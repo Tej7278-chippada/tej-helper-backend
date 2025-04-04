@@ -444,10 +444,11 @@ router.post('/:id/comment', authMiddleware, async (req, res) => {
 //   }
 // });
 
-// Get a single post by ID
+// Get a single post by ID with user details
 router.get('/:id', async (req, res) => {
   try {
-    const post = await postsModel.findById(req.params.id);
+    const post = await postsModel.findById(req.params.id).populate('userId', 'username profilePic');
+    
     if (!post) {
       return res.status(404).json({ message: 'Post not found' });
     }
@@ -455,15 +456,20 @@ router.get('/:id', async (req, res) => {
     const postWithBase64Media = {
       ...post._doc,
       media: post.media.map((buffer) => buffer.toString('base64')),
+      user: {
+        id: post.userId._id,
+        username: post.userId.username,
+        profilePic: post.userId.profilePic ? post.userId.profilePic.toString('base64') : null,
+      },
     };
 
-    if (req.user) {
-      // If the user is authenticated, include likedByUser info
-      const userId = req.user.id;
-      const user = await User.findById(userId);
-      const isLiked = user.likedPosts?.includes(post._id.toString());
-      postWithBase64Media.likedByUser = isLiked;
-    }
+    // if (req.user) {
+    //   // If the user is authenticated, include likedByUser info
+    //   const userId = req.user.id;
+    //   const user = await User.findById(userId);
+    //   const isLiked = user.likedPosts?.includes(post._id.toString());
+    //   postWithBase64Media.likedByUser = isLiked;
+    // }
 
     res.json(postWithBase64Media);
   } catch (err) {
