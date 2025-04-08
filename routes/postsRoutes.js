@@ -7,6 +7,7 @@ const authMiddleware = require('../middleware/authMiddleware');
 const User = require('../models/userModel');
 const postsModel = require('../models/postsModel');
 const Notification = require('../models/notificationModel');
+const axios = require("axios");
 
 // Configure multer to store files in memory as buffers
 // const storage = multer.memoryStorage();
@@ -188,6 +189,32 @@ router.post('/add', authMiddleware, upload.array('media', 5), async (req, res) =
   } catch (err) {
     console.error('Error adding post:', err);
     res.status(500).json({ message: 'Error adding post', error: err.message });
+  }
+});
+
+// route to fetch images related to title text from unsplash
+router.get("/generate-images", async (req, res) => {
+  try {
+    const { query } = req.query;
+
+    if (!query) {
+      return res.status(400).json({ error: "Query parameter is required" });
+    }
+
+    const response = await axios.get(
+      `https://api.unsplash.com/search/photos`,
+      {
+        params: { query, per_page: 6 },
+        headers: {
+          Authorization: `Client-ID ${process.env.UNSPLASH_ACCESS_KEY}`,
+        },
+      }
+    );
+
+    res.json(response.data);
+  } catch (error) {
+    console.error("Error fetching Unsplash images:", error);
+    res.status(500).json({ error: "Failed to fetch images" });
   }
 });
 
