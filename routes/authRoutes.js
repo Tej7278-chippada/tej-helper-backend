@@ -303,6 +303,59 @@ router.get('/:userId', authMiddleware, async (req, res) => {
   }
 });
 
+// Add a rating to a user
+router.post('/rate/:userId', authMiddleware, async (req, res) => {
+  const { userId } = req.params;
+  const { rating, comment } = req.body;
+  const raterId = req.user.id; // ID of the logged-in user
+
+  if (!rating || rating < 1 || rating > 5) {
+    return res.status(400).json({ message: 'Invalid rating value' });
+  }
+
+  try {
+    const user = await User.findById(userId);
+    if (!user) return res.status(404).json({ message: 'User not found' });
+
+    // Check if the user has already rated
+    const existingRating = user.ratings.find((r) => r.userId.toString() === raterId);
+    if (existingRating) {
+      existingRating.rating = rating;
+      existingRating.comment = comment;
+    } else {
+      user.ratings.push({ userId: raterId, rating, comment });
+    }
+
+    // Calculate new trust level
+    const totalRatings = user.ratings.length;
+    const avgRating = user.ratings.reduce((sum, r) => sum + r.rating, 0) / totalRatings;
+
+    user.trustLevel = avgRating.toFixed(1);
+    await user.save();
+
+    res.json({ message: 'Rating submitted', trustLevel: user.trustLevel });
+  } catch (err) {
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Get user's average rating
+router.get('/rating/:userId', async (req, res) => {
+  try {
+    const user = await User.findById(req.params.userId);
+    if (!user) return res.status(404).json({ message: 'User not found' });
+
+    const averageRating = user.ratings.length
+      ? user.ratings.reduce((sum, r) => sum + r.rating, 0) / user.ratings.length
+      : 0;
+
+    res.json({ averageRating, totalReviews: user.ratings.length });
+  } catch (error) {
+    console.error('Error fetching user rating:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
 // Route to update user location
 router.put('/:userId/location', authMiddleware, async (req, res) => {
   const { userId } = req.params;
