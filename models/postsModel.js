@@ -5,7 +5,7 @@ const PostSchema = new mongoose.Schema({
   title: { type: String, required: true },
   price: { type: Number, required: true },
   categories: {type: String, enum: ['Paid', 'UnPaid', 'Emergency'], required: true},
-  gender: { type: String, enum: ['Male', 'Female', 'Kids'], required: true },
+  gender: { type: String, enum: ['Male', 'Female', 'Kids', 'Everyone'], required: true },
   peopleCount: { type: Number },
   postStatus: { type: String, enum: ['Active', 'InActive', 'Closed'], default: 'Active' },
 //   stockCount: { type: Number },
