@@ -303,6 +303,30 @@ router.get('/:userId', authMiddleware, async (req, res) => {
   }
 });
 
+// Get all ratings for a user with rater details
+// router.get('/ratings/:userId', async (req, res) => {
+//   try {
+//     const user = await User.findById(req.params.userId)
+//       .populate('ratings.userId', 'username profilePic');
+//     if (!user) return res.status(404).json({ message: 'User not found' });
+
+//     const ratings = user.ratings.map(r => ({
+//       userId: r.userId._id,
+//       username: r.userId.username,
+//       profilePic: r.userId.profilePic,
+//       rating: r.rating,
+//       comment: r.comment,
+//       createdAt: r.createdAt
+//     }));
+
+//     res.json({ ratings });
+//   } catch (error) {
+//     console.error('Error fetching user ratings:', error);
+//     res.status(500).json({ message: 'Server error' });
+//   }
+// });
+
+
 // Add a rating to a user
 router.post('/rate/:userId', authMiddleware, async (req, res) => {
   const { userId } = req.params;
@@ -322,6 +346,7 @@ router.post('/rate/:userId', authMiddleware, async (req, res) => {
     if (existingRating) {
       existingRating.rating = rating;
       existingRating.comment = comment;
+      existingRating.createdAt = Date.now();
     } else {
       user.ratings.push({ userId: raterId, rating, comment });
     }
@@ -342,14 +367,22 @@ router.post('/rate/:userId', authMiddleware, async (req, res) => {
 // Get user's average rating
 router.get('/rating/:userId', async (req, res) => {
   try {
-    const user = await User.findById(req.params.userId);
+    const user = await User.findById(req.params.userId).populate({
+      path: 'ratings.userId',
+      select: 'username profilePic trustLevel',
+    });
+
     if (!user) return res.status(404).json({ message: 'User not found' });
 
-    const averageRating = user.ratings.length
-      ? user.ratings.reduce((sum, r) => sum + r.rating, 0) / user.ratings.length
-      : 0;
+    // const averageRating = user.ratings.length
+    //   ? user.ratings.reduce((sum, r) => sum + r.rating, 0) / user.ratings.length
+    //   : 0;
 
-    res.json({ averageRating, totalReviews: user.ratings.length });
+    res.json({
+      averageRating : user.trustLevel,
+      totalReviews: user.ratings.length,
+      ratings: user.ratings.reverse(), // return latest first
+    });
   } catch (error) {
     console.error('Error fetching user rating:', error);
     res.status(500).json({ message: 'Server error' });

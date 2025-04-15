@@ -474,7 +474,7 @@ router.post('/:id/comment', authMiddleware, async (req, res) => {
 // Get a single post by ID with user details
 router.get('/:id', async (req, res) => {
   try {
-    const post = await postsModel.findById(req.params.id).populate('userId', 'username profilePic trustLevel ratings');
+    const post = await postsModel.findById(req.params.id).populate('userId', 'username profilePic trustLevel');
     
     if (!post) {
       return res.status(404).json({ message: 'Post not found' });
@@ -488,8 +488,8 @@ router.get('/:id', async (req, res) => {
         username: post.userId.username,
         profilePic: post.userId.profilePic ? post.userId.profilePic.toString('base64') : null,
         trustLevel: post.userId.trustLevel, // Include trust level
-        ratings: post.userId.ratings,
-        ratedUsername: post.userId.ratings.userId,
+        // ratings: post.userId.ratings,
+        // ratedUsername: post.userId.ratings.userId,
       },
     };
 

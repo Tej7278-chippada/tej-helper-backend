@@ -23,6 +23,7 @@ const userSchema = new mongoose.Schema({
       userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
       rating: { type: Number, min: 1, max: 5 }, // Rating between 1-5
       comment: { type: String },
+      createdAt: { type: Date, default: Date.now }
     },
   ],
   groups: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Group' }], // Array of group IDs
