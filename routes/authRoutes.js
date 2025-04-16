@@ -289,12 +289,19 @@ router.get('/:userId', authMiddleware, async (req, res) => {
   if (req.user.id !== userId) return res.status(403).json({ message: 'Unauthorized access' });
 
   try {
-    const user = await User.findById(userId).select('-password');
+    const user = await User.findById(userId).select('-password').populate({
+      path: 'ratings.userId',
+      select: 'username profilePic trustLevel',
+    });
     if (!user) return res.status(404).json({ message: 'User not found' });
     // Convert profilePic to Base64 string if it exists
     const userData = user.toObject();
     if (user.profilePic) {
       userData.profilePic = user.profilePic.toString('base64');
+    }
+    if (user.ratings) {
+      userData.totalReviews = user.ratings.length;
+      userData.ratings = user.ratings.reverse(); // return latest first
     }
 
     res.json(userData);
