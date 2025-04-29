@@ -114,6 +114,41 @@ router.get('/chatsOfPost', authMiddleware, async (req, res) => {
   }
 });
 
+// fetch chats of user
+router.get('/chatsOfUser', authMiddleware, async (req, res) => {
+  const userId = req.user.id;
+
+  try {
+    const chats = await chatModel.find({ buyerId: userId })
+      // .populate('postId', 'title') // Populate post title
+      .populate('postId') // Populate post title
+      .populate('sellerId', 'username profilePic'); // Populate seller details
+
+    const formattedChats = chats.map(chat => ({
+      chatId: chat._id,
+      // postId: chat.postId?._id,
+      // post: chat.postId || [],
+      posts : {
+        postId : chat.postId?._id,
+        postTitle : chat.postId?.title,
+        postImage : chat.postId?.media ? chat.postId?.media.toString('base64') : null,
+      },
+      seller: {
+        id: chat.sellerId?._id,
+        username: chat.sellerId?.username,
+        profilePic: chat.sellerId?.profilePic?.toString('base64') || null,
+      },
+    }));
+
+    res.status(200).json({ chats: formattedChats });
+  } catch (error) {
+    console.error('Error in /chatsOfUser:', error);
+    res.status(500).json({ message: 'Error fetching chats', error: error.message });
+  }
+});
+
+
+
 // message sending route for post posted user on chatHistoryPage
 router.post('/sendMessage', authMiddleware, async (req, res) => {
   try {

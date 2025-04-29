@@ -11,6 +11,7 @@ const twilio = require('twilio');
 const multer = require('multer');
 const sharp = require('sharp');
 const authMiddleware = require('../middleware/authMiddleware');
+const axios = require('axios');
 
 // Set up Nodemailer transporter
 const transporter = nodemailer.createTransport({
@@ -87,6 +88,36 @@ router.post('/register', upload.single('profilePic'), async (req, res) => {
       subject: 'Welcome to Helper',
       text: `Your Helper account has username of ${username} created successfully, and binded with this mail id ${email}.`,
     });
+
+    // Send message notification while user account registered.
+    try {
+
+      // Send SMS confirmation via Fast2SMS
+      const smsMessage = `👋 Hi ${username}, welcome to Helper! 🎉`;
+          // Your account has been successfully created and linked with the email: ${email}.
+          // Thanks for joining us! 🚀
+
+      await axios.post('https://www.fast2sms.com/dev/bulkV2', {
+        route: "q",
+        sender_id: "FSTSMS",
+        message: smsMessage,
+        language: 'english',
+        numbers: phone,
+        flash: 0
+      }, {
+        headers: {
+          'authorization': process.env.FAST2SMS_API_KEY,
+          'Content-Type': 'application/json'
+        }
+      });
+      console.log('message sent to Phone.');
+     } catch (error) {
+      if (error.response) {
+        console.error("Fast2SMS Error:", error.response.data);
+      } else {
+        console.error("Unknown Axios Error:", error.message);
+      }
+     }
 
     console.log('Registered user:', newUser); // Log the newly saved user
     res.status(201).json({ message: `Your new account created with username: ${newUser.username} and ${newUser.email}` });
@@ -197,14 +228,39 @@ router.post('/request-otp', async (req, res) => {
       await transporter.sendMail({
         to: contact,
         subject: 'Password Reset OTP',
-        text: `Your TejChat App account password reset OTP is ${otp}. It is valid for 10 minutes.`
+        text: `Your Helper App account password reset OTP is ${otp}. It is valid for 10 minutes.`
       });
     } else {
-      await twilioClient.messages.create({
-        to: contact,
-        from: process.env.TWILIO_PHONE_NUMBER,
-        body: `Your TejChat App account password reset OTP is ${otp}. It is valid for 10 minutes.`
-      });
+      // await twilioClient.messages.create({
+      //   to: contact,
+      //   from: process.env.TWILIO_PHONE_NUMBER,
+      //   body: `Your TejChat App account password reset OTP is ${otp}. It is valid for 10 minutes.`
+      // });
+      try {
+        const smsMessage = `🔐 Your Helper password reset OTP is ${otp}.`; 
+        //  Valid for 10 minutes. Don't share it with anyone.
+        await axios.post('https://www.fast2sms.com/dev/bulkV2', {
+          route: 'q', // otp
+          sender_id: 'FSTSMS',
+          message: smsMessage,
+          // variables_values: otp,
+          // language: 'english',
+          numbers: contact,
+          flash: 0
+        }, {
+          headers: {
+            'authorization': process.env.FAST2SMS_API_KEY,
+            'Content-Type': 'application/json'
+          }
+        });
+        console.log('message sent to Phone.');
+     } catch (error) {
+      if (error.response) {
+        console.error("Fast2SMS Error:", error.response.data);
+      } else {
+        console.error("Unknown Axios Error:", error.message);
+      }
+     }
     }
 
     res.json({ message: 'OTP sent successfully' });
