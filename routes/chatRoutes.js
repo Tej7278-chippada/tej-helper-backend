@@ -131,7 +131,7 @@ router.get('/chatsOfUser', authMiddleware, async (req, res) => {
       posts : {
         postId : chat.postId?._id,
         postTitle : chat.postId?.title,
-        postImage : chat.postId?.media ? chat.postId?.media.toString('base64') : null,
+        postImage : chat.postId?.media?.[0] ? chat.postId?.media[0].toString('base64') : null,
       },
       seller: {
         id: chat.sellerId?._id,
