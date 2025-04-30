@@ -101,9 +101,12 @@ router.get('/chatsOfPost', authMiddleware, async (req, res) => {
         profilePic: buyer.profilePic ? buyer.profilePic.toString('base64') : null,
       }));
       // console.log('Post:', post._id, 'Buyers:', buyers); // Debugging
+      const media = post.media?.map(img => img.toString('base64')) || [];
+      // const postImage = chat.postId?.media?.[0] ? chat.postId?.media[0].toString('base64') : null,
       return {
         ...post._doc,
         buyers,
+        media, // add base64-converted media
       };
     });
 
