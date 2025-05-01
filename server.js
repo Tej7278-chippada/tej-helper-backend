@@ -65,17 +65,19 @@ app.use('/api/notifications', require('./routes/notificationRoutes'));
 //   });
 
 io.on('connection', (socket) => {
-  // console.log('a user connected:', socket.id);
+  console.log('a user connected:', socket.id);
 
-  socket.on('joinRoom', (room) => {
-      socket.join(room);
-      // console.log(`User ${socket.id} joined room ${room}`);
+  socket.on('joinChatRoom', ({ postId, userId, otherUserId }) => {
+    const room = `post_${postId}_user_${userId}_user_${otherUserId}`;
+    socket.join(room);
+    console.log(`User ${socket.id} joined room ${room}`);
   });
 
-  // socket.on('sendMessage', async (data) => {
-  //     const { room, message } = data;
-  //     io.to(room).emit('receiveMessage', message);
-  // });
+  socket.on('leaveChatRoom', ({ postId, userId, otherUserId }) => {
+    const room = `post_${postId}_user_${userId}_user_${otherUserId}`;
+    socket.leave(room);
+    console.log(`User ${socket.id} left room ${room}`);
+  });
 
   // Add this new event listener for real-time seen status
   socket.on('messageSeen', ({ room, messageId }) => {
@@ -84,7 +86,7 @@ io.on('connection', (socket) => {
   });
 
   socket.on('disconnect', () => {
-    // console.log('user disconnected:', socket.id);
+    console.log('user disconnected:', socket.id);
   });
 });
 

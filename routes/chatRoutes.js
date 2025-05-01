@@ -71,7 +71,7 @@ router.post('/send', authMiddleware, async (req, res) => {
     let newMessageData = { newMessage, lastMessageAt : chat.lastMessageAt  };
 
     // Emit the new message to the room
-    const room = `${postId}_${buyerId}`;
+    const room = `post_${postId}_user_${buyerId}_user_${sellerId}`;
     req.io.to(room).emit('receiveMessage', {...newMessage, seen: false // Initially false
     }); // Use Socket.IO to broadcast the message
 
@@ -187,7 +187,7 @@ router.post('/sendMessage', authMiddleware, async (req, res) => {
     await chat.save();
 
     // Emit the new message to the room
-    const room = `${postId}_${buyerId}`;
+    const room = `post_${postId}_user_${buyerId}_user_${sellerId}`;
     req.io.to(room).emit('receiveMessage', {...newMessage, seen: false // Initially false
       }); // Use Socket.IO to broadcast the message
 
@@ -230,9 +230,15 @@ router.post('/toggle-helper', authMiddleware, async (req, res) => {
 // Mark messages as seen
 router.post('/markAsSeen', authMiddleware, async (req, res) => {
   try {
-    const { postId, buyerId, messageIds } = req.body;
+    const { postId, buyerId, sellerId, messageIds } = req.body;
+
+     // Validate input
+     if (!postId || !buyerId || !sellerId || !messageIds || !Array.isArray(messageIds)) {
+      return res.status(400).json({ message: 'Missing required fields' });
+    }
     
-    const chat = await chatModel.findOne({ postId, buyerId });
+    // Find and update the chat
+    const chat = await chatModel.findOne({ postId, buyerId, sellerId });
     if (!chat) {
       return res.status(404).json({ message: 'Chat not found' });
     }
@@ -248,9 +254,9 @@ router.post('/markAsSeen', authMiddleware, async (req, res) => {
     chat.messages = updatedMessages;
     await chat.save();
 
-    // Emit the seen status update to the room
-    const room = `${postId}_${buyerId}`;
-    req.io.to(room).emit('messagesSeen', messageIds);
+    // Emit the seen status update to the specific room
+    const room = `post_${postId}_user_${buyerId}_user_${sellerId}`;
+    req.io.to(room).emit('messageSeen', messageIds);
 
     res.status(200).json({ message: 'Messages marked as seen' });
   } catch (error) {
