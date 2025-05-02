@@ -64,6 +64,8 @@ app.use('/api/notifications', require('./routes/notificationRoutes'));
 //     }
 //   });
 
+const onlineUsers = new Map();
+
 io.on('connection', (socket) => {
   console.log('a user connected:', socket.id);
 
@@ -83,6 +85,39 @@ io.on('connection', (socket) => {
   socket.on('messageSeen', ({ room, messageId }) => {
     // Broadcast to all in the room except the sender
     socket.to(room).emit('messageSeenUpdate', { messageId });
+  });
+
+  // (1) Tracks When a user logs in (frontend emits 'userOnline')
+  socket.on('userOnline', (userId) => {
+    onlineUsers.set(userId, socket.id);
+    console.log(`User ${userId} is online`);
+    io.emit('userStatusChange', { userId, isOnline: true });
+  });
+
+  // (2) Tracks When a user closes chat (frontend emits 'userAway')
+  socket.on('userAway', (userId) => {
+    if (onlineUsers.has(userId)) {
+      onlineUsers.delete(userId);
+      console.log(`User ${userId} is away (closed chat)`);
+      io.emit('userStatusChange', { userId, isOnline: false });
+    }
+  });
+
+  // (3) Tracks When a user disconnects (browser closed/tab refreshed)
+  socket.on('disconnect', () => {
+    // Find which user disconnected
+    for (const [userId, socketId] of onlineUsers.entries()) {
+      if (socketId === socket.id) {
+        onlineUsers.delete(userId);
+        console.log(`User ${userId} went offline (disconnected)`);
+        io.emit('userStatusChange', { userId, isOnline: false });
+        break;
+      }
+    }
+  });
+
+  socket.on('checkOnlineStatus', (userIdToCheck, callback) => {
+    callback(onlineUsers.has(userIdToCheck));
   });
 
   socket.on('disconnect', () => {
