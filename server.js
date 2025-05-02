@@ -116,6 +116,21 @@ io.on('connection', (socket) => {
     }
   });
 
+  // Handle typing events
+  socket.on('typing', ({ postId, userId, otherUserId, isTyping }) => {
+    // Use the same room format as your chat messages
+    const room = `post_${postId}_user_${userId}_user_${otherUserId}`;
+    
+    // Broadcast to the other user in this chat
+    socket.to(room).emit('userTyping', { 
+      userId, 
+      isTyping,
+      postId
+    });
+    
+    console.log(`User ${userId} typing in post ${postId} (room: ${room})`);
+  });
+
   socket.on('checkOnlineStatus', (userIdToCheck, callback) => {
     callback(onlineUsers.has(userIdToCheck));
   });
