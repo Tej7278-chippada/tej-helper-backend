@@ -166,6 +166,7 @@ router.post('/login', async (req, res) => {
       authToken,
       tokenUsername: user.username,
       userId: user._id, // for returning user details
+      tokenPic: user.profilePic ? user.profilePic.toString('base64') : null,
     });
   } catch (error) {
     console.error('Error logging in:', error);
