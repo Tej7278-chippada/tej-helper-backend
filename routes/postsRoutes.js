@@ -8,6 +8,7 @@ const User = require('../models/userModel');
 const postsModel = require('../models/postsModel');
 const Notification = require('../models/notificationModel');
 const axios = require("axios");
+const webpush = require('../config/webpush');
 
 // Configure multer to store files in memory as buffers
 // const storage = multer.memoryStorage();
@@ -27,24 +28,33 @@ function calculateDistance(lat1, lon1, lat2, lon2) {
 
 // Add this function to send push notifications
 const sendPushNotification = async (subscription, message, postId) => {
-  const payload = JSON.stringify({
-    title: 'New Post Nearby',
-    body: message,
-    icon: '/logo192.png',
-    data: { url: `/post/${postId}` }
-  });
+  try {
+    const payload = {
+      title: 'New Post Nearby',
+      body: message,
+      icon: '/logo192.png',
+      data: { 
+        url: `${process.env.FRONTEND_URL}/post/${postId}`,
+        postId: postId.toString() 
+      }
+    };
 
-  await fetch(process.env.WEB_PUSH_ENDPOINT, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${process.env.WEB_PUSH_AUTH_TOKEN}`
-    },
-    body: JSON.stringify({
+    await webpush.sendNotification(
       subscription,
-      payload
-    })
-  });
+      JSON.stringify(payload) // Ensure proper JSON stringification
+    );
+    console.log('Notification pushed..👍');
+  } catch (error) {
+    console.error('Error sending push notification:', error);
+    
+    // Remove invalid subscriptions
+    if (error.statusCode === 410) {
+      await User.updateOne(
+        { _id: subscription.userId },
+        { $set: { notificationToken: null, notificationEnabled: false } }
+      );
+    }
+  }
 };
 
 // Initialize multer with the storage configuration
@@ -148,12 +158,12 @@ router.post('/add', authMiddleware, upload.array('media', 5), async (req, res) =
               const subscription = JSON.parse(user.notificationToken);
               await sendPushNotification(
                 subscription,
-                `New post "${post.title}" near your location tej!`,
+                `New post "${post.title}" near your location!`,
                 post._id  // Pass the post ID here
               );
-              // console.log('Notification pushed..');
+              console.log('Notification pushed..');
             } catch (error) {
-              // console.error('Error sending push notification:', error);
+              console.error('Error sending push notification:', error);
             }
           }
         

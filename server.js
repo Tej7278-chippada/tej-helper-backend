@@ -5,7 +5,7 @@ const authRoutes = require('./routes/authRoutes');
 const likesRoutes = require('./routes/likesRoutes');
 const http = require('http');
 const { Server } = require('socket.io');
-
+require('./config/webpush'); // This will initialize webpush
 const cors = require('cors');
 const connectDB = require('./config/db');
 
@@ -39,6 +39,19 @@ app.use((req, res, next) => {
   req.io = io;
   next();
 });
+
+// Add to server.js after other imports
+// const webpush = require('web-push');
+
+// // Configure VAPID keys (should be in your .env)
+// webpush.setVapidDetails(
+//   `mailto:${process.env.VAPID_EMAIL}`,
+//   process.env.VAPID_PUBLIC_KEY,
+//   process.env.VAPID_PRIVATE_KEY
+// );
+
+// // Export the configured webpush
+// module.exports.webpush = webpush;
 
 // Define routes
 app.use('/api/auth', authRoutes);
