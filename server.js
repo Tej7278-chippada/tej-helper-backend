@@ -82,16 +82,21 @@ const onlineUsers = new Map();
 io.on('connection', (socket) => {
   console.log('a user connected:', socket.id);
 
+  socket.on('joinRoom', (room) => {
+    socket.join(room);
+    console.log(`User ${socket.id} joined room ${room}`);
+  });
+
   socket.on('joinChatRoom', ({ postId, userId, otherUserId }) => {
     const room = `post_${postId}_user_${userId}_user_${otherUserId}`;
     socket.join(room);
-    console.log(`User ${socket.id} joined room ${room}`);
+    console.log(`User ${socket.id} joined chat room ${room}`);
   });
 
   socket.on('leaveChatRoom', ({ postId, userId, otherUserId }) => {
     const room = `post_${postId}_user_${userId}_user_${otherUserId}`;
     socket.leave(room);
-    console.log(`User ${socket.id} left room ${room}`);
+    console.log(`User ${socket.id} left chat room ${room}`);
   });
 
   // Add this new event listener for real-time seen status
@@ -154,4 +159,4 @@ io.on('connection', (socket) => {
 });
 
 const PORT = process.env.PORT || 5012;
-server.listen(PORT, '0.0.0.0', () => console.log(`Server running on port http://192.168.99.172:${PORT}`));
+server.listen(PORT, '0.0.0.0', () => console.log(`Server running on port http://192.168.122.172:${PORT}`));

@@ -147,9 +147,9 @@ router.post('/add', authMiddleware, upload.array('media', 5), async (req, res) =
               postId: post._id,
               message: notification.message
             });
-            // console.log("Notification emitted..");
+            console.log(`Notification emitted..${user.username}`);
           } else {
-            // console.log("Notification stored but not emitted (user disabled)");
+            console.log(`Notification stored but not emitted (user disabled) ${user.username}`);
           }
 
           // Send push notification if enabled
@@ -161,7 +161,7 @@ router.post('/add', authMiddleware, upload.array('media', 5), async (req, res) =
                 `New post "${post.title}" near your location!`,
                 post._id  // Pass the post ID here
               );
-              console.log('Notification pushed..');
+              console.log(`Notification pushed..${user.username}`);
             } catch (error) {
               console.error('Error sending push notification:', error);
             }
