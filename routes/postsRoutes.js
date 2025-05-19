@@ -268,8 +268,11 @@ router.get('/my-posts', authMiddleware, async (req, res) => {
 router.get('/', async (req, res) => {
   try {
     // Extract filter parameters from query string
-    const { title, price, categories, gender, postStatus, skip = 0, limit = 12 } = req.query;
+    const { title, price, categories, gender, postStatus, skip = 0, limit = 12, userLat, userLng, distance } = req.query;
 
+    if (!distance) {
+      return res.status(400).json({ error: "Distance range is required" });
+    }
     // Build a filter object based on the available query parameters
     const filter = {};
     if (title) {
@@ -292,21 +295,69 @@ router.get('/', async (req, res) => {
       filter.postStatus = postStatus; // Filter by post status
     }
 
-    // Fetch posts with the applied filters
-    const posts = await postsModel.find(filter)
-      .skip(parseInt(skip))
-      .limit(parseInt(limit))
-      .sort({ createdAt: -1 }); // Newest first
+    let posts;
+    let totalCount;
 
-    // Convert each post's media buffer to base64
-    const postsWithBase64Media = posts.map((post) => ({
-      ...post._doc,
-      media: post.media.map((buffer) => buffer.toString('base64')),
-    }));
+    if (userLat && userLng && distance) {
+      // GeoNear query with additional filters
+      const aggregationPipeline = [
+        {
+          $geoNear: {
+            near: {
+              type: "Point",
+              coordinates: [parseFloat(userLng), parseFloat(userLat)]
+            },
+            distanceField: "distance",
+            maxDistance: parseFloat(distance) * 1000, // Convert km to meters
+            spherical: true,
+            query: filter
+          }
+        },
+        { $sort: { createdAt: -1 } }
+      ];
 
-    res.json(postsWithBase64Media);
+       // Get total count
+       const countPipeline = [...aggregationPipeline, { $count: "total" }];
+       const countResult = await postsModel.aggregate(countPipeline);
+       totalCount = countResult[0]?.total || 0;
+ 
+       // Get paginated results
+       const dataPipeline = [
+         ...aggregationPipeline,
+         { $skip: parseInt(skip) },
+         { $limit: parseInt(limit) }
+       ];
+       posts = await postsModel.aggregate(dataPipeline);
+ 
+       console.log(`posts fetched in range ${distance} and count ${totalCount}`);
+    } else {
+     // Regular query without geo filtering
+     posts = await postsModel.find(filter)
+     .sort({ createdAt: -1 })
+     .skip(parseInt(skip))
+     .limit(parseInt(limit))
+     .exec();
+
+      totalCount = await postsModel.countDocuments(filter).exec();
+    }
+
+    // Convert media to base64 - handle both aggregation and find results
+    const postsWithBase64Media = posts.map(post => {
+      // For aggregation results, media might be in a different format
+      const media = post.media || (post._doc && post._doc.media) || [];
+      return {
+        ...post._doc || post,
+        media: media.map(buffer => buffer.toString('base64'))
+      };
+    });
+
+    res.json({
+      posts: postsWithBase64Media,
+      totalCount: totalCount
+    });
+    console.log(`posts fetched in range ${distance} and initial fetch count ${posts.length}`)
   } catch (err) {
-    console.error("Error fetching products:", err);
+    console.error("Error fetching posts:", err);
     res.status(500).json({ message: "Failed to fetch posts" });
   }
 });

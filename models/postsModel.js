@@ -28,6 +28,15 @@ const PostSchema = new mongoose.Schema({
     latitude: { type: Number },
     longitude: { type: Number },
     address: String, 
+    type: {
+      type: String,
+      enum: ['Point'],
+      required: true
+    },
+    coordinates: {
+      type: [Number],
+      required: true
+    },
   },
   buyerIds: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }], // Array of buyer IDs
   helperIds: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }], // Array of helper IDs
@@ -36,5 +45,8 @@ const PostSchema = new mongoose.Schema({
 },
 // { timestamps: true }
 );
+
+// Create index (alternative to doing it in the shell)
+PostSchema.index({ location: '2dsphere' });
 
 module.exports = mongoose.model('Post', PostSchema);
