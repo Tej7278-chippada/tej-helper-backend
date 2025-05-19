@@ -281,7 +281,7 @@ router.get('/', async (req, res) => {
     if (price) {
       const [minPrice, maxPrice] = price.split('-'); // Assuming the price range is passed as "minPrice-maxPrice"
       if (minPrice && maxPrice) {
-        filter.price = { $gte: minPrice, $lte: maxPrice };
+        filter.price = { $gte: parseFloat(minPrice), $lte: parseFloat(maxPrice) };
       }
     }
     if (categories) {
