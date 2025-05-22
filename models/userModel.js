@@ -26,17 +26,16 @@ const userSchema = new mongoose.Schema({
       createdAt: { type: Date, default: Date.now }
     },
   ],
-  groups: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Group' }], // Array of group IDs
   otp: { type: Number },
   otpExpiry: { type: Date },
   userCode: { type: String, required: true, unique: true, default: generateUserCode },
-  address: {
-    street: { type: String, required: true },
-    area: { type: String, required: true },
-    city: { type: String, required: true },
-    state: { type: String, required: true },
-    pincode: { type: String, required: true },
-  },
+  // address: {
+  //   street: { type: String },
+  //   area: { type: String },
+  //   city: { type: String },
+  //   state: { type: String },
+  //   pincode: { type: String },
+  // },
   ip: { type: String, required: true },
   location: {
     city: String,
@@ -44,6 +43,7 @@ const userSchema = new mongoose.Schema({
     country_name: String,
     latitude: { type: Number },
     longitude: { type: Number },
+    address: String, 
   },
   likedPosts: { type: [mongoose.Schema.Types.ObjectId], ref: 'Post', default: [] },
   wishlist: [{
@@ -63,7 +63,7 @@ userSchema.pre('save', async function (next) {
     if (this.isNew) {
       this.password = await bcrypt.hash(this.password, 12); // Hashing the password with 12 salt rounds
     }
-    console.log('Hashed password:', this.password); // Log the hashed password for debugging
+    // console.log('Hashed password:', this.password); // Log the hashed password for debugging
     next();
   } catch (err) {
     return next(err);

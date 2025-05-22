@@ -34,7 +34,7 @@ const upload = multer({
 
 // POST /api/auth/register
 router.post('/register', upload.single('profilePic'), async (req, res) => {
-  const { username, password, phone, email, address, ip, location } = req.body;
+  const { username, password, phone, email,  ip, location } = req.body; // address,
 
   // Username and password validation
   const usernameRegex = /^[A-Z][A-Za-z0-9@_-]{5,}$/;
@@ -77,17 +77,21 @@ router.post('/register', upload.single('profilePic'), async (req, res) => {
     }
 
     // Create and save the new user
-    const newUser = new User({ username, password, phone, email, profilePic: profilePicBuffer, address: JSON.parse(address), ip,
+    const newUser = new User({ username, password, phone, email, profilePic: profilePicBuffer,  ip, //address: JSON.parse(address),
       location: JSON.parse(location),});
     await newUser.save();
 
     // Send email notification
-    await transporter.sendMail({
-      from: process.env.EMAIL_USER,
-      to: email,
-      subject: 'Welcome to Helper',
-      text: `Your Helper account has username of ${username} created successfully, and binded with this mail id ${email}.`,
-    });
+    try {
+      await transporter.sendMail({
+        from: process.env.EMAIL_USER,
+        to: email,
+        subject: 'Welcome to Helper',
+        text: `Your Helper account has username of ${username} created successfully, and binded with this mail id ${email}.`,
+      });
+    } catch (error) {
+      console.error("Error sending mail to new account:", error.message);
+    }
 
     // Send message notification while user account registered.
     try {
