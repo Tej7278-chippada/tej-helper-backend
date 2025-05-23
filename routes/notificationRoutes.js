@@ -16,6 +16,15 @@ router.get('/', authMiddleware, async (req, res) => {
   }
 });
 
+router.get('/unread-count', authMiddleware, async (req, res) => {
+  try {
+    const count = await Notification.countDocuments({ userId: req.user.id, isRead: false });
+    res.json({count});
+  } catch (error) {
+    res.status(500).json({ message: 'Error fetching unread notifications count', error: error.message });
+  }
+});
+
 // Mark notification as read
 router.put('/:id/read', authMiddleware, async (req, res) => {
   try {

@@ -153,6 +153,15 @@ io.on('connection', (socket) => {
     callback(onlineUsers.has(userIdToCheck));
   });
 
+  // In your io.on('connection') handler
+  // socket.on('notificationRead', (userId) => {
+  //   io.emit('notificationUpdate', { userId });
+  // });
+
+  // socket.on('allNotificationsRead', (userId) => {
+  //   io.emit('notificationUpdate', { userId });
+  // });
+
   socket.on('disconnect', () => {
     console.log('user disconnected:', socket.id);
   });
