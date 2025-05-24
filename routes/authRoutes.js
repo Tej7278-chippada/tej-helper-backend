@@ -12,6 +12,10 @@ const multer = require('multer');
 const sharp = require('sharp');
 const authMiddleware = require('../middleware/authMiddleware');
 const axios = require('axios');
+const postsModel = require('../models/postsModel');
+const likesModel = require('../models/likesModel');
+const chatModel = require('../models/chatModel');
+const notificationModel = require('../models/notificationModel');
 
 // Set up Nodemailer transporter
 const transporter = nodemailer.createTransport({
@@ -405,6 +409,10 @@ router.post('/rate/:userId', authMiddleware, async (req, res) => {
     return res.status(400).json({ message: 'Invalid rating value' });
   }
 
+  if (userId === raterId) {
+    return res.status(400).json({ message: 'You cannot rate yourself' });
+  }
+
   try {
     const user = await User.findById(userId);
     if (!user) return res.status(404).json({ message: 'User not found' });
@@ -473,23 +481,155 @@ router.put('/:userId/location', authMiddleware, async (req, res) => {
   }
 });
 
-// Route to delete user account
+// Route to delete user account with comprehensive logging
 router.delete('/:id', authMiddleware, async (req, res) => {
   const { id } = req.params;
+  console.log(`[Account Deletion] Starting deletion process for user ID: ${id}`);
 
-  if (req.user.id !== id) return res.status(403).json({ message: 'Unauthorized access' });
+  if (req.user.id !== id) {
+    console.log(`[Account Deletion] Unauthorized access attempt: User ${req.user.id} tried to delete account ${id}`);
+    return res.status(403).json({ message: 'Unauthorized access' });
+  }
 
   try {
+    console.log(`[Account Deletion] Looking up user ${id} in database`);
     const user = await User.findById(req.user.id);
     if (!user) {
-      return res.status(404).json({ message: 'Seller not found' });
+      console.log(`[Account Deletion] User ${id} not found in database`);
+      return res.status(404).json({ message: 'User not found' });
     }
-    // await Product.deleteMany({ userId: req.user.id }); // Delete all products added by the seller
+    
+    // Delete all posts created by this user
+    console.log(`[Account Deletion] Deleting posts created by user ${id}`);
+    const postDeletionResult = await postsModel.deleteMany({ userId: req.user.id });
+    console.log(`[Account Deletion] Deleted ${postDeletionResult.deletedCount} posts for user ${id}`);
+
+    // Remove user's comments from all posts
+    console.log(`[Account Deletion] Removing comments by user ${id} from all posts`);
+    const commentsUpdateResult = await postsModel.updateMany(
+      { 'comments.username': user.username },
+      { $pull: { comments: { username: user.username } } }
+    );
+    console.log(`[Account Deletion] Updated ${commentsUpdateResult.modifiedCount} posts to remove user's comments`);
+    
+    // Remove user from Likes collection
+    console.log(`[Account Deletion] Removing user ${id} from likes documents`);
+    const likeUpdateResult = await likesModel.updateMany(
+      { userIds: req.user.id },
+      { $pull: { userIds: req.user.id } }
+    );
+    console.log(`[Account Deletion] Updated ${likeUpdateResult.modifiedCount} likes documents for user ${id}`);
+    
+    // Delete likes documents that become empty
+    console.log(`[Account Deletion] Deleting empty likes documents`);
+    const emptyLikesDeletion = await likesModel.deleteMany({ userIds: { $size: 0 } });
+    console.log(`[Account Deletion] Deleted ${emptyLikesDeletion.deletedCount} empty likes documents`);
+    
+    // Handle chat data - delete chats where user is either seller or buyer
+    console.log(`[Account Deletion] Deleting chat conversations for user ${id}`);
+    const chatDeletionResult = await chatModel.deleteMany({
+      $or: [
+        { sellerId: req.user.id },
+        { buyerId: req.user.id }
+      ]
+    });
+    console.log(`[Account Deletion] Deleted ${chatDeletionResult.deletedCount} chat conversations for user ${id}`);
+    
+    // Delete notifications related to this user
+    console.log(`[Account Deletion] Finding posts by user ${id} for notification cleanup`);
+    const userPostIds = await postsModel.find({ userId: req.user.id }).distinct('_id');
+    console.log(`[Account Deletion] Found ${userPostIds.length} posts for notification cleanup`);
+    
+    console.log(`[Account Deletion] Deleting notifications for user ${id}`);
+    const notificationDeletionResult = await notificationModel.deleteMany({
+      $or: [
+        { userId: req.user.id },
+        { postId: { $in: userPostIds } }
+      ]
+    });
+    console.log(`[Account Deletion] Deleted ${notificationDeletionResult.deletedCount} notifications for user ${id}`);
+    
+    // Remove this user from buyerIds and helperIds in other posts
+    console.log(`[Account Deletion] Removing user ${id} from buyerIds and helperIds in other posts`);
+    const postUpdateResult = await postsModel.updateMany(
+      {
+        $or: [
+          { buyerIds: req.user.id },
+          { helperIds: req.user.id }
+        ]
+      },
+      {
+        $pull: {
+          buyerIds: req.user.id,
+          helperIds: req.user.id
+        }
+      }
+    );
+    console.log(`[Account Deletion] Updated ${postUpdateResult.modifiedCount} posts to remove user references`);
+    
+    // Remove this user from wishlists of other users
+    console.log(`[Account Deletion] Removing user ${id} from other users' wishlists`);
+    const wishlistUpdateResult = await User.updateMany(
+      { wishlist: req.user.id },
+      { $pull: { wishlist: req.user.id } }
+    );
+    console.log(`[Account Deletion] Updated ${wishlistUpdateResult.modifiedCount} users' wishlists`);
+    
+    // Remove this user from likedPosts of other users
+    console.log(`[Account Deletion] Removing user ${id} from other users' likedPosts`);
+    const likedPostsUpdateResult = await User.updateMany(
+      { likedPosts: req.user.id },
+      { $pull: { likedPosts: req.user.id } }
+    );
+    console.log(`[Account Deletion] Updated ${likedPostsUpdateResult.modifiedCount} users' likedPosts`);
+    
+    // Remove this user from ratings in other users' documents and recalculate trust levels
+    console.log(`[Account Deletion] Finding users who rated user ${id}`);
+    const usersToUpdate = await User.find({ 'ratings.userId': req.user.id });
+    
+    console.log(`[Account Deletion] Removing ratings by user ${id} from ${usersToUpdate.length} users`);
+    for (const ratedUser of usersToUpdate) {
+      // Remove the rating
+      ratedUser.ratings = ratedUser.ratings.filter(r => r.userId.toString() !== req.user.id);
+      
+      // Recalculate trust level
+      if (ratedUser.ratings.length > 0) {
+        const avgRating = ratedUser.ratings.reduce((sum, r) => sum + r.rating, 0) / ratedUser.ratings.length;
+        ratedUser.trustLevel = parseFloat(avgRating.toFixed(1));
+      } else {
+        ratedUser.trustLevel = 0; // No ratings left
+      }
+      
+      await ratedUser.save();
+    }
+    console.log(`[Account Deletion] Updated ${usersToUpdate.length} users' ratings and trust levels`);
+    
+    // Finally delete the user
+    console.log(`[Account Deletion] Deleting user document for ${id}`);
     await User.findByIdAndDelete(req.user.id);
-    res.status(200).json({ message: 'User account deleted successfully.' });
+    console.log(`[Account Deletion] Successfully deleted user ${id}`);
+    
+    res.status(200).json({ 
+      message: 'User account and all associated data deleted successfully.',
+      details: {
+        postsDeleted: postDeletionResult.deletedCount,
+        commentsRemovedFrom: commentsUpdateResult.modifiedCount,
+        likesUpdated: likeUpdateResult.modifiedCount,
+        emptyLikesDeleted: emptyLikesDeletion.deletedCount,
+        chatsDeleted: chatDeletionResult.deletedCount,
+        notificationsDeleted: notificationDeletionResult.deletedCount,
+        postsUpdated: postUpdateResult.modifiedCount,
+        wishlistsUpdated: wishlistUpdateResult.modifiedCount,
+        likedPostsUpdated: likedPostsUpdateResult.modifiedCount,
+        ratingsUpdated: usersToUpdate.length
+      }
+    });
   } catch (error) {
-    console.error('Error deleting seller account:', error);
-    res.status(500).json({ message: 'Failed to delete seller account.' });
+    console.error(`[Account Deletion] Error deleting user account ${id}:`, error);
+    res.status(500).json({ 
+      message: 'Failed to delete user account.',
+      error: error.message 
+    });
   }
 });
 
