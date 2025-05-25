@@ -8,7 +8,8 @@ const { Server } = require('socket.io');
 require('./config/webpush'); // This will initialize webpush
 const cors = require('cors');
 const connectDB = require('./config/db');
-
+const User = require('./models/userModel');
+const webpush = require('./config/webpush');
 
 const app = express();
 const server = http.createServer(app);
@@ -161,6 +162,78 @@ io.on('connection', (socket) => {
   // socket.on('allNotificationsRead', (userId) => {
   //   io.emit('notificationUpdate', { userId });
   // });
+
+  // Add this near your other socket.io event handlers in server.js
+  // push notifications code of new message notifications while reciever is on offline
+  socket.on('sendMessage', async ({ postId, senderId, receiverId, text, postOwnerId, postTitle, senderName }) => { // chatId, 
+    try {
+      // Check if receiver is online
+      const isReceiverOnline = onlineUsers.has(receiverId);
+      
+      if (!isReceiverOnline) {
+        // Get receiver's notification token
+        const receiver = await User.findById(receiverId).select('notificationToken notificationEnabled');
+        
+        if (receiver?.notificationEnabled && receiver.notificationToken) {
+          try {
+            const subscription = JSON.parse(receiver.notificationToken);
+            if (postOwnerId === receiverId) {
+              const payload = {
+                title: `New Message of post (${postTitle})`,
+                body: text.length > 30 ? `${senderName} (${text.substring(0, 30)}...)` : `${senderName} (${text})`,
+                icon: '/logo192.png',
+                data: { 
+                  // url: `${process.env.FRONTEND_URL}/chat/${chatId}`,
+                  url: `${process.env.FRONTEND_URL}/chatsOfPost/${postId}`,
+                  // chatId: chatId.toString(),
+                  senderId: senderId.toString()
+                }
+              };
+              await webpush.sendNotification(subscription, JSON.stringify(payload));
+            } else {
+              const payload = {
+                title: `New Message of post (${postTitle})`,
+                body: text.length > 30 ? `${senderName} (${text.substring(0, 30)}...)` : `${senderName} (${text})`,
+                icon: '/logo192.png',
+                data: { 
+                  // url: `${process.env.FRONTEND_URL}/chat/${chatId}`,
+                  url: `${process.env.FRONTEND_URL}/chatsOfUser`,
+                  // chatId: chatId.toString(),
+                  senderId: senderId.toString()
+                }
+              };
+              await webpush.sendNotification(subscription, JSON.stringify(payload));
+            }
+            
+            console.log('Push notification sent to offline user');
+          } catch (error) {
+            console.error('Error sending push notification:', error);
+            
+            // Remove invalid subscription
+            if (error.statusCode === 410) {
+              await User.findByIdAndUpdate(receiverId, {
+                notificationToken: null,
+                notificationEnabled: false
+              });
+            }
+          }
+        }
+      }
+      
+      // Proceed with normal message handling
+      // const room = `post_${postId}_user_${senderId}_user_${receiverId}`;
+      // socket.to(room).emit('receiveMessage', {
+      //   _id: Date.now().toString(),
+      //   senderId,
+      //   text,
+      //   createdAt: new Date(),
+      //   seen: false
+      // });
+      
+    } catch (error) {
+      console.error('Error handling message:', error);
+    }
+  });
 
   socket.on('disconnect', () => {
     console.log('user disconnected:', socket.id);
