@@ -9,6 +9,10 @@ const postsModel = require('../models/postsModel');
 const Notification = require('../models/notificationModel');
 const axios = require("axios");
 const webpush = require('../config/webpush');
+const { default: mongoose } = require('mongoose');
+const likesModel = require('../models/likesModel');
+const notificationModel = require('../models/notificationModel');
+const chatModel = require('../models/chatModel');
 
 // Configure multer to store files in memory as buffers
 // const storage = multer.memoryStorage();
@@ -424,21 +428,87 @@ router.put('/:id', authMiddleware, upload.array('media', 5), async (req, res) =>
   }
 });
 
-// Delete post (only by the user who posted it)
+// Delete post and all related data (only by the user who posted it)
 router.delete('/:id', authMiddleware, async (req, res) => {
-  try {
-    const { id } = req.params;
-    const userId = req.user.id;
+  const { id } = req.params;
+  const userId = req.user.id;
+  
+  console.log(`[Post Deletion] Starting deletion process for post ID: ${id} by user ID: ${userId}`);
 
-    const post = await postsModel.findOneAndDelete({ _id: id, userId });
+  try {
+    // Verify post exists and belongs to user
+    const post = await postsModel.findOne({ _id: id, userId });
     if (!post) {
+      console.log(`[Post Deletion] Post not found or unauthorized access attempt`);
       return res.status(403).json({ message: 'You are not authorized to delete this post' });
     }
 
-    res.json({ message: 'Post deleted successfully' });
+    // Start transaction to ensure atomic operations
+    const session = await mongoose.startSession();
+    session.startTransaction();
+    
+    try {
+      console.log(`[Post Deletion] Deleting post ${id} and related data`);
+      
+      // 1. Delete the post
+      await postsModel.deleteOne({ _id: id }).session(session);
+      
+      // 2. Delete all likes associated with this post
+      const likesResult = await likesModel.deleteMany({ postId: id }).session(session);
+      console.log(`[Post Deletion] Deleted ${likesResult.deletedCount} likes for post ${id}`);
+      
+      // 3. Delete all notifications related to this post
+      const notificationsResult = await notificationModel.deleteMany({ postId: id }).session(session);
+      console.log(`[Post Deletion] Deleted ${notificationsResult.deletedCount} notifications for post ${id}`);
+      
+      // 4. Delete all chat conversations related to this post
+      const chatsResult = await chatModel.deleteMany({ postId: id }).session(session);
+      console.log(`[Post Deletion] Deleted ${chatsResult.deletedCount} chat conversations for post ${id}`);
+      
+      // 5. Remove post from users' wishlists
+      const wishlistResult = await User.updateMany(
+        { wishlist: id },
+        { $pull: { wishlist: id } },
+        { session }
+      );
+      console.log(`[Post Deletion] Removed post from ${wishlistResult.modifiedCount} wishlists`);
+      
+      // 6. Remove post from users' likedPosts
+      const likedPostsResult = await User.updateMany(
+        { likedPosts: id },
+        { $pull: { likedPosts: id } },
+        { session }
+      );
+      console.log(`[Post Deletion] Removed post from ${likedPostsResult.modifiedCount} likedPosts lists`);
+      
+      // Commit the transaction
+      await session.commitTransaction();
+      console.log(`[Post Deletion] Successfully deleted post ${id} and all related data`);
+      
+      res.json({ 
+        message: 'Post and all related data deleted successfully',
+        details: {
+          likesDeleted: likesResult.deletedCount,
+          notificationsDeleted: notificationsResult.deletedCount,
+          chatsDeleted: chatsResult.deletedCount,
+          wishlistsUpdated: wishlistResult.modifiedCount,
+          likedPostsUpdated: likedPostsResult.modifiedCount
+        }
+      });
+    } catch (error) {
+      // If any error occurs, abort the transaction
+      await session.abortTransaction();
+      console.error(`[Post Deletion] Error during transaction for post ${id}:`, error);
+      throw error;
+    } finally {
+      session.endSession();
+    }
   } catch (err) {
-    console.error('Error deleting post:', err);
-    res.status(500).json({ message: 'Error deleting post' });
+    console.error(`[Post Deletion] Error deleting post ${id}:`, err);
+    res.status(500).json({ 
+      message: 'Error deleting post and related data',
+      error: err.message 
+    });
   }
 });
 
