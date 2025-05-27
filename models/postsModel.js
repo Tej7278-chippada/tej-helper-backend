@@ -37,6 +37,7 @@ const PostSchema = new mongoose.Schema({
       type: [Number],
       required: true
     },
+    isProtected: { type: Boolean, default: false },
   },
   buyerIds: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }], // Array of buyer IDs
   helperIds: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }], // Array of helper IDs
