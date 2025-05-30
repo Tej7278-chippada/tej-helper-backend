@@ -14,6 +14,7 @@ const PostSchema = new mongoose.Schema({
   timeFrom: { type: Date }, // New field for time from
   timeTo: { type: Date }, // New field for time to
   description: { type: String, required: true},
+  isFullTime: { type: Boolean, default: false },
   media: [Buffer], // Store images as Buffer data
 //   videos: [String],
   likes: { type: Number, default: 0 },

@@ -70,7 +70,7 @@ const upload = multer({
 // Add post (only by authenticated user)
 router.post('/add', authMiddleware, upload.array('media', 5), async (req, res) => {
   try {
-    const { title, categories, price, gender, peopleCount, serviceDays, serviceDate, timeFrom, timeTo, description, location } = req.body;
+    const { title, categories, price, gender, peopleCount, serviceDays, serviceDate, timeFrom, timeTo, description, isFullTime, location } = req.body;
 
     const userId = req.user.id;
     const user = await User.findById(userId);
@@ -103,6 +103,7 @@ router.post('/add', authMiddleware, upload.array('media', 5), async (req, res) =
       timeFrom, // New field
       timeTo, // New field
       description,
+      isFullTime,
       media: compressedImages,
       location: JSON.parse(location), // Parse the location string to object
       ip: req.ip,
@@ -377,7 +378,7 @@ router.put('/:id', authMiddleware, upload.array('media', 5), async (req, res) =>
       return res.status(403).json({ message: 'You are not authorized to update this post' });
     }
 
-    const { title, price, categories, gender, postStatus, peopleCount, serviceDays, serviceDate, timeFrom, timeTo, description, existingMedia, location } = req.body;
+    const { title, price, categories, gender, postStatus, peopleCount, serviceDays, serviceDate, timeFrom, timeTo, description, isFullTime, existingMedia, location } = req.body;
 
     // Parse existingMedia to get the IDs of media to keep
     const mediaToKeep = existingMedia ? JSON.parse(existingMedia) : [];
@@ -412,6 +413,7 @@ router.put('/:id', authMiddleware, upload.array('media', 5), async (req, res) =>
     post.timeFrom = timeFrom;
     post.timeTo = timeTo;
     post.description = description;
+    post.isFullTime = categories === 'Paid' ? isFullTime : false;
     post.ip = req.ip;
     post.updatedAt = new Date();
 
