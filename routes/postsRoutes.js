@@ -346,13 +346,27 @@ router.get('/', async (req, res) => {
       totalCount = await postsModel.countDocuments(filter).exec();
     }
 
-    // Convert media to base64 - handle both aggregation and find results
+    // // Convert media to base64 - handle both aggregation and find results
+    // const postsWithBase64Media = posts.map(post => {
+    //   // For aggregation results, media might be in a different format
+    //   const media = post.media[0] || (post._doc && post._doc.media) || [];
+    //   return {
+    //     ...post._doc || post,
+    //     media: media.map(buffer => buffer.toString('base64'))
+    //   };
+    // });
+
+    // Convert only the first media image to base64
     const postsWithBase64Media = posts.map(post => {
-      // For aggregation results, media might be in a different format
-      const media = post.media || (post._doc && post._doc.media) || [];
+      // Get raw media array
+      const rawMedia = post.media || (post._doc && post._doc.media) || [];
+
+      // Convert only the first image (if exists) to base64
+      const firstImage = rawMedia[0] ? rawMedia[0].toString('base64') : null;
+
       return {
-        ...post._doc || post,
-        media: media.map(buffer => buffer.toString('base64'))
+        ...(post._doc || post),
+        media: firstImage ? [firstImage] : []  // Wrap in array for consistency
       };
     });
 
