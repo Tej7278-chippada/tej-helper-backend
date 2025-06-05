@@ -242,10 +242,24 @@ router.get('/my-posts', authMiddleware, async (req, res) => {
       return res.status(404).json({ message: 'No posts found for this user.' });
     }
     // Convert each post's media buffer to base64
-    const postsWithBase64Media = posts.map((post) => ({
-      ...post._doc,
-      media: post.media.map((buffer) => buffer.toString('base64')),
-    }));
+    // const postsWithBase64Media = posts.map((post) => ({
+    //   ...post._doc,
+    //   media: post.media.map((buffer) => buffer.toString('base64')),
+    // }));
+
+    // Convert only the first media image to base64
+    const postsWithBase64Media = posts.map(post => {
+      // Get raw media array
+      const rawMedia = post.media || (post._doc && post._doc.media) || [];
+
+      // Convert only the first image (if exists) to base64
+      const firstImage = rawMedia[0] ? rawMedia[0].toString('base64') : null;
+
+      return {
+        ...(post._doc || post),
+        media: firstImage ? [firstImage] : []  // Wrap in array for consistency
+      };
+    });
     
     res.status(200).json( postsWithBase64Media );
   } catch (err) {
