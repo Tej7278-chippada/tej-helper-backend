@@ -75,6 +75,14 @@ router.post('/send', authMiddleware, async (req, res) => {
     req.io.to(room).emit('receiveMessage', {...newMessage, seen: false // Initially false
     }); // Use Socket.IO to broadcast the message
 
+    req.io.emit('newMessageReceived', { // socket to emit new notifications of unread messages count showing
+      chatId: chat._id, 
+      senderId: buyerId,
+      postId,
+      buyerId,
+      sellerId
+    });
+
     res.status(201).json({ message: 'Message sent successfully', newMessage });
   } catch (error) {
     console.error('Error in /send:', error); // Debugging
@@ -89,26 +97,43 @@ router.get('/chatsOfPost', authMiddleware, async (req, res) => {
 
   try {
     const posts = await postsModel.find({ userId }).populate('buyerIds', 'username profilePic');
-    console.log('Posts found:', posts.length); // Debugging
+    // console.log('Posts found:', posts.length); // Debugging
 
     const chats = await chatModel.find({ sellerId: userId }).populate('buyerId', 'username profilePic');
-    console.log('Chats found:', chats.length); // Debugging
+    // console.log('Chats found:', chats.length); // Debugging
 
-    const postsWithBuyers = posts.map(post => {
-      const buyers = post.buyerIds.map(buyer => ({
-        id: buyer._id,
-        username: buyer.username,
-        profilePic: buyer.profilePic ? buyer.profilePic.toString('base64') : null,
+    const postsWithBuyers = await Promise.all(posts.map(async (post) => {
+      const buyers = await Promise.all(post.buyerIds.map(async (buyer) => {
+        // Find the chat between this seller and buyer for this post
+        const chat = await chatModel.findOne({
+          postId: post._id,
+          sellerId: userId,
+          buyerId: buyer._id
+        });
+
+        // Calculate unread messages (messages not seen by current user)
+        const unreadCount = chat ? chat.messages.reduce((count, message) => {
+          return count + (message.senderId.toString() !== userId.toString() && !message.seen ? 1 : 0);
+        }, 0) : 0;
+
+        return {
+          id: buyer._id,
+          username: buyer.username,
+          profilePic: buyer.profilePic ? buyer.profilePic.toString('base64') : null,
+          unreadMessagesCount: unreadCount,
+          lastMessageAt: chat ? chat.lastMessageAt : null
+        };
       }));
-      // console.log('Post:', post._id, 'Buyers:', buyers); // Debugging
-      const media = post.media?.map(img => img.toString('base64')) || [];
-      // const postImage = chat.postId?.media?.[0] ? chat.postId?.media[0].toString('base64') : null,
+
+      // Sort buyers by last message time (newest first)
+      buyers.sort((a, b) => new Date(b.lastMessageAt || 0) - new Date(a.lastMessageAt || 0));
+
       return {
         ...post._doc,
         buyers,
-        media, // add base64-converted media
+        media: post.media?.map(img => img.toString('base64')) || [],
       };
-    });
+    }));
 
     res.status(200).json({ posts: postsWithBuyers, chats });
   } catch (error) {
@@ -127,21 +152,33 @@ router.get('/chatsOfUser', authMiddleware, async (req, res) => {
       .populate('postId') // Populate post title
       .populate('sellerId', 'username profilePic'); // Populate seller details
 
-    const formattedChats = chats.map(chat => ({
-      chatId: chat._id,
-      // postId: chat.postId?._id,
-      // post: chat.postId || [],
-      posts : {
-        postId : chat.postId?._id,
-        postTitle : chat.postId?.title,
-        postImage : chat.postId?.media?.[0] ? chat.postId?.media[0].toString('base64') : null,
-      },
-      seller: {
-        id: chat.sellerId?._id,
-        username: chat.sellerId?.username,
-        profilePic: chat.sellerId?.profilePic?.toString('base64') || null,
-      },
-    }));
+    const formattedChats = chats.map(chat => {
+      // Calculate unread messages (messages not seen by current user)
+      const unreadCount = chat.messages.reduce((count, message) => {
+        return count + (message.senderId.toString() !== userId.toString() && !message.seen ? 1 : 0);
+      }, 0);
+
+      return {
+        chatId: chat._id,
+        // postId: chat.postId?._id,
+        // post: chat.postId || [],
+        posts : {
+          postId : chat.postId?._id,
+          postTitle : chat.postId?.title,
+          postImage : chat.postId?.media?.[0] ? chat.postId?.media[0].toString('base64') : null,
+        },
+        seller: {
+          id: chat.sellerId?._id,
+          username: chat.sellerId?.username,
+          profilePic: chat.sellerId?.profilePic?.toString('base64') || null,
+        },
+        unreadMessagesCount: unreadCount,
+        lastMessageAt: chat.lastMessageAt
+      };
+    });
+
+    // Sort chats by last message time (newest first)
+    formattedChats.sort((a, b) => new Date(b.lastMessageAt) - new Date(a.lastMessageAt));
 
     res.status(200).json({ chats: formattedChats });
   } catch (error) {
@@ -190,6 +227,14 @@ router.post('/sendMessage', authMiddleware, async (req, res) => {
     const room = `post_${postId}_user_${buyerId}_user_${sellerId}`;
     req.io.to(room).emit('receiveMessage', {...newMessage, seen: false // Initially false
       }); // Use Socket.IO to broadcast the message
+
+    req.io.emit('newMessageReceived', {  // socket to emit new notifications of unread messages count showing
+      chatId: chat._id, 
+      senderId: sellerId,
+      postId,
+      buyerId,
+      sellerId
+    });
 
     res.status(201).json({ message: 'Message sent successfully', newMessage });
   } catch (error) {
@@ -257,6 +302,13 @@ router.post('/markAsSeen', authMiddleware, async (req, res) => {
     // Emit the seen status update to the specific room
     const room = `post_${postId}_user_${buyerId}_user_${sellerId}`;
     req.io.to(room).emit('messageSeen', messageIds);
+
+    req.io.emit('messagesSeen', { 
+      chatId: chat._id,
+      postId,
+      buyerId,
+      sellerId
+    });
 
     res.status(200).json({ message: 'Messages marked as seen' });
   } catch (error) {

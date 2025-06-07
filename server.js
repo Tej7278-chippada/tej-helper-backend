@@ -229,6 +229,21 @@ io.on('connection', (socket) => {
       //   createdAt: new Date(),
       //   seen: false
       // });
+
+      // Emit to all clients that a new message was received
+    //   try {
+    //   io.emit('newMessageReceived', {
+    //     // chatId,
+    //     senderId,
+    //     postId,
+    //     buyerId: senderId === postOwnerId ? receiverId : senderId,
+    //     sellerId: postOwnerId
+    //   });
+    //   console.log('message count fetched.');
+    // } catch (error) {
+    //   console.log('error on message count');
+    // }
+      
       
     } catch (error) {
       console.error('Error handling message:', error);
