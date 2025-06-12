@@ -269,25 +269,25 @@ router.get('/my-posts', authMiddleware, async (req, res) => {
 });
 
 // Get posts media only for updating post by authenticated user
-// router.get('/postMedia/:postId', authMiddleware, async (req, res) => {
-//   try {
-//     const { postId } = req.params;
-//     const post = await postsModel.findById(postId);
+router.get('/postMedia/:postId', authMiddleware, async (req, res) => {
+  try {
+    const { postId } = req.params;
+    const post = await postsModel.findById(postId);
     
-//     if (!post) {
-//       return res.status(404).json({ message: 'Post not found' });
-//     }
+    if (!post) {
+      return res.status(404).json({ message: 'Post not found' });
+    }
 
-//     const postWithBase64Media = {
-//       media: post.media.map((buffer) => buffer.toString('base64')),
-//     };
+    const postWithBase64Media = {
+      media: post.media.map((buffer) => buffer.toString('base64')),
+    };
     
-//     res.status(200).json( postWithBase64Media );
-//   } catch (err) {
-//     console.error('Error fetching user posts:', err);
-//     res.status(500).json({ message: 'Failed to fetch user posts' });
-//   }
-// });
+    res.status(200).json( postWithBase64Media );
+  } catch (err) {
+    console.error('Error fetching user posts:', err);
+    res.status(500).json({ message: 'Failed to fetch user posts' });
+  }
+});
 
 // Get all products (public)
 // router.get('/all', async (req, res) => {
