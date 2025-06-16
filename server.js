@@ -83,6 +83,12 @@ const onlineUsers = new Map();
 io.on('connection', (socket) => {
   console.log('a user connected:', socket.id);
 
+  // Add this new handler for joining posts notifications room
+  socket.on('joinNotificationsRoom', (userId) => {
+    socket.join(`notifications_${userId}`);
+    console.log(`User ${userId} joined notifications room`);
+  });
+
   socket.on('joinRoom', (room) => {
     socket.join(room);
     console.log(`User ${socket.id} joined room ${room}`);

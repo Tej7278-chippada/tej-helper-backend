@@ -31,7 +31,7 @@ function calculateDistance(lat1, lon1, lat2, lon2) {
 }
 
 // Add this function to send push notifications
-const sendPushNotification = async (subscription, message, postId) => {
+const sendPushNotification = async (subscription, message, postId, userName) => {
   try {
     const payload = {
       title: 'New Post Nearby',
@@ -47,9 +47,9 @@ const sendPushNotification = async (subscription, message, postId) => {
       subscription,
       JSON.stringify(payload) // Ensure proper JSON stringification
     );
-    console.log('Notification pushed..👍');
+    // console.log(`Notification pushed..👍 ${userName}`);
   } catch (error) {
-    console.error('Error sending push notification:', error);
+    console.error(`Error sending push notification ${userName}:`, error);
     
     // Remove invalid subscriptions
     if (error.statusCode === 410) {
@@ -152,6 +152,14 @@ router.post('/add', authMiddleware, upload.array('media', 5), async (req, res) =
               postId: post._id,
               message: notification.message
             });
+            // Get updated unread count
+            const unreadCount = await Notification.countDocuments({ 
+              userId: user._id, 
+              isRead: false 
+            });
+
+            // Emit update to the specific user
+            req.io.to(`notifications_${user._id}`).emit('notificationCountUpdate', { userId : user._id, unreadCount});
             console.log(`Notification emitted..${user.username}`);
           } else {
             console.log(`Notification stored but not emitted (user disabled) ${user.username}`);
@@ -164,11 +172,12 @@ router.post('/add', authMiddleware, upload.array('media', 5), async (req, res) =
               await sendPushNotification(
                 subscription,
                 `New post "${post.title}" near your location!`,
-                post._id  // Pass the post ID here
+                post._id,  // Pass the post ID here
+                user.username
               );
               console.log(`Notification pushed..${user.username}`);
             } catch (error) {
-              console.error('Error sending push notification:', error);
+              console.error(`Error sending push notification (${user.username}) :`, error);
             }
           }
         
