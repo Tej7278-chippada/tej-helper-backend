@@ -257,20 +257,29 @@ router.get('/my-posts', authMiddleware, async (req, res) => {
     // }));
 
     // Convert only the first media image to base64
-    const postsWithBase64Media = posts.map(post => {
+    const postsWithBase64Media = await Promise.all(posts.map(async (post) => {
       // Get raw media array
       const rawMedia = post.media || (post._doc && post._doc.media) || [];
 
       // Convert only the first image (if exists) to base64
       const firstImage = rawMedia[0] ? rawMedia[0].toString('base64') : null;
 
+      // Count unread messages where current user is the seller
+      const unreadCount = await chatModel.countDocuments({
+        postId: post._id,
+        sellerId: userId,
+        'messages.seen': false,
+        'messages.senderId': { $ne: userId } // Only count messages not sent by the current user
+      });
+
       return {
         ...(post._doc || post),
-        media: firstImage ? [firstImage] : []  // Wrap in array for consistency
+        media: firstImage ? [firstImage] : [],  // Wrap in array for consistency
+        unreadMessages: unreadCount
       };
-    });
+    }));
     
-    res.status(200).json( postsWithBase64Media );
+    res.status(200).json( postsWithBase64Media.reverse() );
   } catch (err) {
     console.error('Error fetching user posts:', err);
     res.status(500).json({ message: 'Failed to fetch user posts' });
