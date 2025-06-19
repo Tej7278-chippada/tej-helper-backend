@@ -225,7 +225,19 @@ io.on('connection', (socket) => {
           }
         }
       }
-      
+
+      // emiting chat messages notifications to seneaker bar alerts while receiver user on webpage and not on the chat
+      if (!isReceiverOnline) {
+        try {
+          socket.to(receiverId.toString()).emit('chatNotification', {
+            postId, senderId, receiverId, text, postOwnerId, postTitle, senderName
+          });
+          console.log('chat message emited to online user',text)
+        } catch (error) {
+          console.error('Error emiting chat messages to online user :', error);
+        }
+      }
+
       // Proceed with normal message handling
       // const room = `post_${postId}_user_${senderId}_user_${receiverId}`;
       // socket.to(room).emit('receiveMessage', {
