@@ -31,7 +31,7 @@ router.post('/addBanner', authMiddleware, upload.array('media', 8), async (req, 
       req.files.map(async (file) => {
         const buffer = await sharp(file.buffer)
           .resize({ width: 800 })
-          .jpeg({ quality: 20 })
+          .jpeg({ quality: 80 })
           .toBuffer();
         return buffer;
       })
@@ -156,7 +156,7 @@ router.put('/:id', authMiddleware, upload.array('media', 8), async (req, res) =>
         req.files.map(async (file) => {
           const buffer = await sharp(file.buffer)
             .resize({ width: 800 })
-            .jpeg({ quality: 20 })
+            .jpeg({ quality: 80 })
             .toBuffer();
           return buffer;
         })
