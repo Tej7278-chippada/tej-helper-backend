@@ -326,15 +326,27 @@ router.get('/postMedia/:postId', authMiddleware, async (req, res) => {
 router.get('/', async (req, res) => {
   try {
     // Extract filter parameters from query string
-    const { title, price, categories, gender, postStatus, skip = 0, limit = 12, userLat, userLng, distance } = req.query;
+    const { title, price, categories, gender, postStatus, skip = 0, limit = 12, userLat, userLng, distance, search } = req.query;
 
     if (!distance) {
       return res.status(400).json({ error: "Distance range is required" });
     }
     // Build a filter object based on the available query parameters
     const filter = {};
+     // Handle search query - search in both title and description
+    if (search && search.trim()) {
+      filter.$or = [
+        { title: { $regex: search.trim(), $options: 'i' } },
+        { description: { $regex: search.trim(), $options: 'i' } }
+      ];
+    }
     if (title) {
       filter.title = { $regex: title, $options: 'i' }; // Case-insensitive search for title
+      // Search in both title and description
+      // filter.$or = [
+      //   { title: { $regex: title, $options: 'i' } },
+      //   { description: { $regex: title, $options: 'i' } }
+      // ];
     }
     if (price) {
       const [minPrice, maxPrice] = price.split('-'); // Assuming the price range is passed as "minPrice-maxPrice"
@@ -427,7 +439,7 @@ router.get('/', async (req, res) => {
       posts: postsWithBase64Media,
       totalCount: totalCount
     });
-    console.log(`posts fetched in range ${distance} and initial fetch count ${posts.length}`)
+    console.log(`posts fetched in range ${distance}${search ? ` with search "${search}"` : ''} and initial fetch count ${posts.length}`)
   } catch (err) {
     console.error("Error fetching posts:", err);
     res.status(500).json({ message: "Failed to fetch posts" });
