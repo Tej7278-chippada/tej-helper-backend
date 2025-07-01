@@ -341,7 +341,7 @@ router.get('/postMedia/:postId', authMiddleware, async (req, res) => {
 router.get('/', async (req, res) => {
   try {
     // Extract filter parameters from query string
-    const { title, price, categories, serviceType, gender, postStatus, skip = 0, limit = 12, userLat, userLng, distance, search } = req.query;
+    const { title, price, postType, categories, serviceType, gender, postStatus, skip = 0, limit = 12, userLat, userLng, distance, search } = req.query;
 
     if (!distance) {
       return res.status(400).json({ error: "Distance range is required" });
@@ -368,6 +368,9 @@ router.get('/', async (req, res) => {
       if (minPrice && maxPrice) {
         filter.price = { $gte: parseFloat(minPrice), $lte: parseFloat(maxPrice) };
       }
+    }
+    if (postType) { // added this line for only shows the Helper posts on ALL section
+      filter.postType = postType;
     }
     if (categories) {
       filter.categories = categories; // Filter by categories
