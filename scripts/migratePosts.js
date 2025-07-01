@@ -12,22 +12,36 @@ mongoose.connect((process.env.MONGO_URI), {
 .catch(err => console.error('MongoDB Connection Error:', err));
 
 // Migration function
+// const migratePosts = async () => {
+//   try {
+//     const posts = await postsModel.find({});
+//     let updatedCount = 0;
+    
+//     for (const post of posts) {
+//       if (post.location?.latitude && post.location?.longitude && !post.location.coordinates) {
+//         post.location.coordinates = [post.location.longitude, post.location.latitude];
+//         post.location.type = 'Point';
+//         await post.save();
+//         updatedCount++;
+//         console.log(`Updated post ${post._id}`);
+//       }
+//     }
+    
+//     console.log(`Migration complete. Updated ${updatedCount} posts.`);
+//     process.exit(0);
+//   } catch (err) {
+//     console.error('Migration failed:', err);
+//     process.exit(1);
+//   }
+// };
+
 const migratePosts = async () => {
   try {
-    const posts = await postsModel.find({});
-    let updatedCount = 0;
-    
-    for (const post of posts) {
-      if (post.location?.latitude && post.location?.longitude && !post.location.coordinates) {
-        post.location.coordinates = [post.location.longitude, post.location.latitude];
-        post.location.type = 'Point';
-        await post.save();
-        updatedCount++;
-        console.log(`Updated post ${post._id}`);
-      }
-    }
-    
-    console.log(`Migration complete. Updated ${updatedCount} posts.`);
+    const result = await postsModel.updateMany(
+      { postType: { $exists: false } },  // Only update posts missing postType
+      { $set: { postType: 'HelpRequest' } }
+    );
+    console.log(`🎉 Migration complete. Matched: ${result.matchedCount}, Modified: ${result.modifiedCount}`);
     process.exit(0);
   } catch (err) {
     console.error('Migration failed:', err);

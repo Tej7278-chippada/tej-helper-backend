@@ -70,7 +70,7 @@ const upload = multer({
 // Add post (only by authenticated user)
 router.post('/add', authMiddleware, upload.array('media', 5), async (req, res) => {
   try {
-    const { title, categories, price, gender, peopleCount, serviceDays, serviceDate, timeFrom, timeTo, description, isFullTime, location } = req.body;
+    const { title, postType, categories, serviceType, price, gender, peopleCount, serviceDays, serviceDate, timeFrom, timeTo, description, isFullTime, location } = req.body;
 
     const userId = req.user.id;
     const user = await User.findById(userId);
@@ -78,21 +78,36 @@ router.post('/add', authMiddleware, upload.array('media', 5), async (req, res) =
       return res.status(404).json({ message: 'User not found' });
     }
 
-    const compressedImages = await Promise.all(
-      req.files.map(async (file) => {
-        const buffer = await sharp(file.buffer)
-          .resize({ width: 800 })
-          .jpeg({ quality: 20 })
-          .toBuffer();
-        return buffer;
-      })
-    );
+    // Validate required fields based on post type
+    if (postType === 'HelpRequest' && !categories) {
+      return res.status(400).json({ message: 'Category is required for help requests' });
+    }
+    
+    if (postType === 'ServiceOffering' && !serviceType) {
+      return res.status(400).json({ message: 'Service type is required for service offerings' });
+    }
+
+    // Process uploaded images
+    let compressedImages = [];
+    if (req.files && req.files.length > 0) {
+      compressedImages = await Promise.all(
+        req.files.map(async (file) => {
+          const buffer = await sharp(file.buffer)
+            .resize({ width: 800 })
+            .jpeg({ quality: 20 })
+            .toBuffer();
+          return buffer;
+        })
+      );
+    }
 
     const post = new postsModel({
       userId,
       userCode: user.userCode,
       title,
-      categories,
+      postType: postType || 'HelpRequest',
+      categories : postType === 'HelpRequest' ? categories : undefined,
+      serviceType : postType === 'ServiceOffering' ? serviceType : undefined,
       price : categories === 'UnPaid' ? 0 : price,
       gender,
       peopleCount,
@@ -457,7 +472,7 @@ router.put('/:id', authMiddleware, upload.array('media', 5), async (req, res) =>
       return res.status(403).json({ message: 'You are not authorized to update this post' });
     }
 
-    const { title, price, categories, gender, postStatus, peopleCount, serviceDays, serviceDate, timeFrom, timeTo, description, isFullTime, existingMedia, location } = req.body;
+    const { title, price, postType, categories, serviceType, gender, postStatus, peopleCount, serviceDays, serviceDate, timeFrom, timeTo, description, isFullTime, existingMedia, location } = req.body;
 
     // Parse existingMedia to get the IDs of media to keep
     const mediaToKeep = existingMedia ? JSON.parse(existingMedia) : [];
@@ -479,9 +494,20 @@ router.put('/:id', authMiddleware, upload.array('media', 5), async (req, res) =>
       post.media.push(...compressedImages);
     }
 
+    // Validate required fields based on post type
+    if (postType === 'HelpRequest' && !categories) {
+      return res.status(400).json({ message: 'Category is required for help requests' });
+    }
+    
+    if (postType === 'ServiceOffering' && !serviceType) {
+      return res.status(400).json({ message: 'Service type is required for service offerings' });
+    }
+
     // Update other post fields
     post.title = title;
-    post.categories = categories;
+    post.postType = postType;
+    post.categories = postType === 'HelpRequest' ? categories : undefined;
+    post.serviceType = postType === 'ServiceOffering' ? serviceType : undefined;
     post.price = categories === 'UnPaid' ? 0 : price;
     post.gender = gender;
     post.postStatus = postStatus;
@@ -492,7 +518,7 @@ router.put('/:id', authMiddleware, upload.array('media', 5), async (req, res) =>
     post.timeFrom = timeFrom;
     post.timeTo = timeTo;
     post.description = description;
-    post.isFullTime = categories === 'Paid' ? isFullTime : false;
+    post.isFullTime = (categories === 'Paid' || postType === 'ServiceOffering') ? isFullTime : false;
     post.ip = req.ip;
     post.updatedAt = new Date();
 
