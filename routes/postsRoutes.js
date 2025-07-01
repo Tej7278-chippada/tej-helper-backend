@@ -341,7 +341,7 @@ router.get('/postMedia/:postId', authMiddleware, async (req, res) => {
 router.get('/', async (req, res) => {
   try {
     // Extract filter parameters from query string
-    const { title, price, categories, gender, postStatus, skip = 0, limit = 12, userLat, userLng, distance, search } = req.query;
+    const { title, price, categories, serviceType, gender, postStatus, skip = 0, limit = 12, userLat, userLng, distance, search } = req.query;
 
     if (!distance) {
       return res.status(400).json({ error: "Distance range is required" });
@@ -372,6 +372,9 @@ router.get('/', async (req, res) => {
     if (categories) {
       filter.categories = categories; // Filter by categories
       // filter.categories = { $in: categories.split(',') }; // Assuming multiple categories are passed as comma-separated string
+    }
+    if (serviceType) {
+      filter.serviceType = serviceType;
     }
     if (gender) {
       filter.gender = gender; // Filter by gender
