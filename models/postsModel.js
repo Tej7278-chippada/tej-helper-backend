@@ -18,6 +18,7 @@ const PostSchema = new mongoose.Schema({
     enum: [
       'ParkingSpace', 
       'VehicleRental', 
+      'FurnitureRental',
       'Laundry', 
       'Cleaning', 
       'Cooking', 

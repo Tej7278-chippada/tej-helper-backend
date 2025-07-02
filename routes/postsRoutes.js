@@ -243,7 +243,7 @@ router.get("/generate-images", async (req, res) => {
     const response = await axios.get(
       `https://api.unsplash.com/search/photos`,
       {
-        params: { query, per_page: 6 },
+        params: { query, per_page: 20 },
         headers: {
           Authorization: `Client-ID ${process.env.UNSPLASH_ACCESS_KEY}`,
         },
