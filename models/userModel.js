@@ -16,7 +16,7 @@ const userSchema = new mongoose.Schema({
   password: { type: String, required: true },
   profilePic: { type: Buffer }, // Stores image data as Buffer
   email: { type: String, required: true, unique: true },
-  phone: { type: String, required: true },
+  phone: { type: String },
   trustLevel: { type: Number, default: 0 }, // NEW: Trust Level (average rating)
   ratings: [
     {

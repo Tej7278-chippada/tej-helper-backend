@@ -16,6 +16,8 @@ const postsModel = require('../models/postsModel');
 const likesModel = require('../models/likesModel');
 const chatModel = require('../models/chatModel');
 const notificationModel = require('../models/notificationModel');
+const crypto = require('crypto');
+const { OAuth2Client } = require('google-auth-library');
 
 // Set up Nodemailer transporter
 const transporter = nodemailer.createTransport({
@@ -181,6 +183,133 @@ router.post('/login', async (req, res) => {
     return res.status(500).json({ message: 'Login failed', error });
   }
 });
+
+// google OAuth registration or login
+router.post('/google', async (req, res) => {
+  try {
+    const { token } = req.body;
+    
+    if (!token) {
+      return res.status(400).json({ 
+          error: 'Missing token',
+          solution: 'Ensure you are sending the Google credential token'
+      });
+    }
+
+    const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
+    // Verify token
+    const ticket = await client.verifyIdToken({
+      idToken: token,
+      audience: process.env.GOOGLE_CLIENT_ID
+    });
+    
+    const payload = ticket.getPayload();
+
+    if (!payload.email_verified) {
+      return res.status(403).json({ error: 'Email not verified by Google' });
+    }
+    const { email, name, picture } = payload;
+
+    // Find or create user
+    let user = await User.findOne({ email });
+    if (!user) {
+      // Generate random password
+      const randomPassword = crypto.randomBytes(16).toString('hex');
+      
+      // Create username from name + random number
+      const cleanName = name.replace(/[^a-zA-Z0-9]/g, '');
+      const username = cleanName.toLowerCase() + 
+                      Math.floor(1000 + Math.random() * 9000);
+      
+      // Create new user
+      user = new User({
+        username,
+        email,
+        password: randomPassword,
+        profilePic: picture ? await getImageBufferFromUrl(picture) : null,
+        ip: req.ip,
+        location: {}
+      });
+      
+      await user.save();
+    }
+
+    // Generate JWT
+    const authToken = jwt.sign(
+      { id: user._id, username: user.username },
+      process.env.JWT_SECRET,
+      { expiresIn: process.env.JWT_EXPIRES_IN || '1h' }
+    );
+
+    res.status(200).json({
+      authToken,
+      tokenUsername: user.username,
+      userId: user._id,
+      tokenPic: user.profilePic?.toString('base64') || null
+    });
+
+  } catch (error) {
+    console.error('Google auth error:', error);
+    // More detailed error responses
+      let errorMessage = 'Authentication failed';
+      if (error.message.includes('Token used too late')) {
+          errorMessage = 'Session expired. Please try again.';
+      } else if (error.message.includes('Invalid token signature')) {
+          errorMessage = 'Invalid authentication token.';
+      }
+      
+      res.status(401).json({ 
+          error: errorMessage,
+          details: error.message 
+      });
+  }
+});
+
+// Improved image processing function
+async function getImageBufferFromUrl(url) {
+  try {
+    const response = await axios.get(url, {
+      responseType: 'arraybuffer',
+      timeout: 5000
+    });
+    
+    return await sharp(response.data)
+      .resize(300, 300, {
+        fit: 'cover',
+        position: 'center'
+      })
+      .jpeg({ 
+        quality: 80,
+        mozjpeg: true 
+      })
+      .toBuffer();
+  } catch (error) {
+    console.error('Error processing profile image:', error);
+    return null;
+  }
+}
+
+// Enhanced image download function
+async function getImageBufferFromUrl(url) {
+  try {
+    const response = await axios.get(url, { 
+      responseType: 'arraybuffer',
+      timeout: 5000 // 5 second timeout
+    });
+    
+    return await sharp(response.data)
+      .resize({ width: 300, height: 300, fit: 'cover' })
+      .jpeg({ 
+        quality: 80,
+        mozjpeg: true 
+      })
+      .toBuffer();
+      
+  } catch (error) {
+    console.error("Failed to process profile picture:", error);
+    return null;
+  }
+}
 
 // Refresh Token Route
 router.post('/refresh-token', (req, res) => {
