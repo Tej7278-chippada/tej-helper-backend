@@ -18,6 +18,7 @@ const chatModel = require('../models/chatModel');
 const notificationModel = require('../models/notificationModel');
 const crypto = require('crypto');
 const { OAuth2Client } = require('google-auth-library');
+const rateLimit = require('express-rate-limit');
 
 // Set up Nodemailer transporter
 const transporter = nodemailer.createTransport({
@@ -84,7 +85,7 @@ router.post('/register', upload.single('profilePic'), async (req, res) => {
 
     // Create and save the new user
     const newUser = new User({ username, password, phone, email, profilePic: profilePicBuffer,  ip, //address: JSON.parse(address),
-      location: JSON.parse(location),});
+      location: JSON.parse(location), accountCreatedAt: new Date() });
     await newUser.save();
 
     // Send email notification
@@ -162,6 +163,19 @@ router.post('/login', async (req, res) => {
       return res.status(401).json({ message: `Entered password doesn't match to ${isEmail  ? 'Email' : 'Username'} ${identifier} 's data.` });
     }
 
+    // if user account suspended by admin then can't login
+    if (user.accountStatus === 'suspended') {
+      return res.status(403).json({ message: `This account ${identifier} has been suspended.` });
+    }
+
+    // Update last login
+    user.lastLoginAt = new Date();
+    user.loginMethod = isEmail ? 'email' : 'username';
+    if (user.accountStatus === 'inactive') {
+      user.accountStatus = 'active';
+    }
+    await user.save();
+
     // Generate a JWT token valid for a specified period
     const authToken = jwt.sign({ id: user._id, tokenUsername: user.username }, process.env.JWT_SECRET, {
       expiresIn: process.env.JWT_EXPIRES_IN || '1h',
@@ -184,103 +198,326 @@ router.post('/login', async (req, res) => {
   }
 });
 
+// Enhanced rate limiting for OAuth endpoints
+const oauthLimiter = rateLimit({
+  windowMs: 10 * 60 * 1000, // 15 minutes
+  max: 10, // limit each IP to 10 requests per windowMs
+  message: {
+    error: 'Too many authentication attempts, please try again later.',
+    retryAfter: 10 * 60 * 1000
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
 // google OAuth registration or login
-router.post('/google', async (req, res) => {
+router.post('/google', oauthLimiter, async (req, res) => {
   try {
-    const { token } = req.body;
+    const { token, clientId, userAgent, timestamp } = req.body;
     
+    // Enhanced validation
     if (!token) {
       return res.status(400).json({ 
-          error: 'Missing token',
-          solution: 'Ensure you are sending the Google credential token'
+        error: 'Missing authentication token',
+        solution: 'Please ensure you are sending the Google credential token'
       });
     }
 
+    // Validate client ID matches
+    if (clientId !== process.env.GOOGLE_CLIENT_ID) {
+      return res.status(403).json({ 
+        error: 'Invalid client configuration',
+        solution: 'Client ID mismatch'
+      });
+    }
+
+    // Rate limiting check (implement with redis or memory cache)
+    // const clientIP = req.ip || req.connection.remoteAddress;
+    // const rateLimitKey = `google_auth_${clientIP}`;
+
+    // Initialize OAuth2Client with additional security
     const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
-    // Verify token
+    
+    // Verify token with enhanced validation
     const ticket = await client.verifyIdToken({
       idToken: token,
-      audience: process.env.GOOGLE_CLIENT_ID
+      audience: [process.env.GOOGLE_CLIENT_ID],
+      maxExpiry: 3600, // 1 hour max token age
     });
     
     const payload = ticket.getPayload();
 
-    if (!payload.email_verified) {
-      return res.status(403).json({ error: 'Email not verified by Google' });
+    // Enhanced payload validation
+    if (!payload) {
+      return res.status(401).json({ error: 'Invalid token payload' });
     }
-    const { email, name, picture } = payload;
 
-    // Find or create user
-    let user = await User.findOne({ email });
+    if (!payload.email_verified) {
+      return res.status(403).json({ 
+        error: 'Email not verified by Google',
+        solution: 'Please verify your Google account email'
+      });
+    }
+
+    // Additional security checks
+    const tokenAge = Date.now() - (payload.iat * 1000);
+    if (tokenAge > 300000) { // 5 minutes max age
+      return res.status(401).json({ 
+        error: 'Token too old',
+        solution: 'Please sign in again'
+      });
+    }
+
+    const { email, name, picture, sub: googleId } = payload;
+
+    // Enhanced user validation
+    if (!email || !name) {
+      return res.status(400).json({ 
+        error: 'Incomplete profile data from Google',
+        solution: 'Please ensure your Google profile has email and name'
+      });
+    }
+
+    // Find existing user or create new one
+    let user = await User.findOne({ 
+      $or: [
+        { email },
+        { googleId }
+      ]
+    });
+
+    let isNewUser = false;
+
     if (!user) {
-      // Generate random password
-      const randomPassword = crypto.randomBytes(16).toString('hex');
+      // Generate secure random password
+      const randomPassword = crypto.randomBytes(32).toString('hex');
+      // const hashedPassword = await bcrypt.hash(randomPassword, 12);
+      // console.log('hashed pasword',randomPassword);
       
-      // Create username from name + random number
-      const cleanName = name.replace(/[^a-zA-Z0-9]/g, '');
-      const username = cleanName.toLowerCase() + 
-                      Math.floor(1000 + Math.random() * 9000);
+      // Create unique username with collision handling
+      let username = await generateUniqueUsername(name);
+
+      // Get location data if available
+      const locationData = await getLocationFromIP(req.ip);
       
       // Create new user
       user = new User({
         username,
         email,
         password: randomPassword,
+        googleId,
         profilePic: picture ? await getImageBufferFromUrl(picture) : null,
+        lastProfilePicUpdate: picture ? new Date() : undefined,
         ip: req.ip,
-        location: {}
+        location: locationData || {},
+        isGoogleUser: true,
+        emailVerified: true,
+        accountCreatedAt: new Date(),
+        accountStatus: 'active',
+        lastLoginAt: new Date(),
+        loginMethod: 'google'
       });
       
       await user.save();
+      isNewUser = true;
+
+      // Send welcome email for new users
+      try {
+        await sendWelcomeEmail(user.email, user.username);
+      } catch (emailError) {
+        console.error('Welcome email failed:', emailError);
+      }
+
+      // console.log('New Google user created:', user.username);
+    } else {
+
+      // if user account suspended by admin then can't login
+      if (user.accountStatus === 'suspended') {
+        return res.status(403).json({ message: `This account ${email} has been suspended.` });
+      }
+      
+      // Update existing user
+      user.lastLoginAt = new Date();
+      user.loginMethod = 'google';
+
+      if (user.accountStatus === 'inactive') {
+        user.accountStatus = 'active';
+      }
+
+      if (googleId && !user.googleId) {
+        user.googleId = googleId;
+      }
+
+      if (email && (user.emailVerified === false)) {
+        user.emailVerified = true;
+      }
+      
+      // Update profile picture if changed
+      if (picture && (!user.profilePic)) { //  || user.lastProfilePicUpdate < Date.now() - 86400000
+        try {
+          user.profilePic = await getImageBufferFromUrl(picture);
+          user.lastProfilePicUpdate = new Date();
+        } catch (error) {
+          console.error('Profile picture update failed:', error);
+        }
+      }
+      
+      await user.save();
+      // console.log('Existing user logged in:', user.username);
     }
 
-    // Generate JWT
+    // Generate JWT with enhanced payload
     const authToken = jwt.sign(
-      { id: user._id, username: user.username },
+      { 
+        id: user._id, 
+        tokenUsername: user.username,
+        // email: user.email,
+        // loginMethod: 'google',
+        // isGoogleUser: true,
+        // iat: Math.floor(Date.now() / 1000)
+      },
       process.env.JWT_SECRET,
-      { expiresIn: process.env.JWT_EXPIRES_IN || '1h' }
+      { 
+        expiresIn: process.env.JWT_EXPIRES_IN || '24h',
+        // issuer: 'Tej-Helper',
+        // audience: 'tej-Helper-users'
+      }
     );
 
+    // Log successful authentication
+    // console.log(`Google OAuth success for user: ${user.username}, IP: ${req.ip}`);
+
+    // Return enhanced response
     res.status(200).json({
+      message: isNewUser ? 'Account created successfully' : 'Login successful',
       authToken,
       tokenUsername: user.username,
       userId: user._id,
-      tokenPic: user.profilePic?.toString('base64') || null
+      tokenPic: user.profilePic?.toString('base64') || null,
+      isNewUser,
+      // emailVerified: true,
+      // accountType: 'google'
     });
 
   } catch (error) {
     console.error('Google auth error:', error);
-    // More detailed error responses
-      let errorMessage = 'Authentication failed';
-      if (error.message.includes('Token used too late')) {
-          errorMessage = 'Session expired. Please try again.';
-      } else if (error.message.includes('Invalid token signature')) {
-          errorMessage = 'Invalid authentication token.';
-      }
-      
-      res.status(401).json({ 
-          error: errorMessage,
-          details: error.message 
-      });
+    
+    // Enhanced error handling
+    let errorMessage = 'Authentication failed';
+    let statusCode = 500;
+    
+    if (error.message.includes('Token used too late')) {
+      errorMessage = 'Session expired. Please try again.';
+      statusCode = 401;
+    } else if (error.message.includes('Invalid token signature')) {
+      errorMessage = 'Invalid authentication token.';
+      statusCode = 401;
+    } else if (error.message.includes('Token used too early')) {
+      errorMessage = 'Invalid token timing.';
+      statusCode = 401;
+    } else if (error.message.includes('Wrong recipient')) {
+      errorMessage = 'Token not intended for this application.';
+      statusCode = 403;
+    } else if (error.code === 11000) {
+      errorMessage = 'Account already exists with this email.';
+      statusCode = 409;
+    } else if (error.name === 'ValidationError') {
+      errorMessage = 'Invalid user data.';
+      statusCode = 400;
+    }
+    
+    res.status(statusCode).json({ 
+      error: errorMessage,
+      // details: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
   }
 });
 
-// Improved image processing function
+// Helper function to generate unique username
+async function generateUniqueUsername(name) {
+  // Create username from name with better collision handling
+    const cleanName = name.replace(/[^a-zA-Z0-9]/g, '');
+    let username = cleanName.toLowerCase() + 
+                      Math.floor(1000 + Math.random() * 9000);
+    // const username = cleanName.toLowerCase() + 
+    //                   Math.floor(1000 + Math.random() * 9000);
+    
+    // Ensure username meets requirements and is unique
+    if (username.length < 3) {
+      username = 'user' + username;
+    }
+    
+    // Check for existing username and add suffix if needed
+    let finalUsername = username;
+    let counter = 1;
+    
+    while (await User.findOne({ username: finalUsername })) {
+      finalUsername = `${username}${counter}`;
+      counter++;
+      
+      // Prevent infinite loop
+      if (counter > 1000) {
+        finalUsername = username + Date.now().toString().slice(-6);
+        break;
+      }
+    }
+
+    // Capitalize first letter to meet username requirements
+    finalUsername = finalUsername.charAt(0).toUpperCase() + finalUsername.slice(1);
+  
+  // Fallback to completely random username
+  return finalUsername;
+}
+
+// Helper function to get location from IP
+async function getLocationFromIP(ip) {
+  try {
+    // Use a geolocation service (implement with your preferred provider)
+    // This is a placeholder - replace with actual implementation
+    const response = await axios.get(`https://ipapi.co/${ip}/json/`, {
+      timeout: 5000
+    });
+    
+    return {
+      city: response.data.city,
+      region: response.data.region,
+      country_name: response.data.country_name,
+      latitude: response.data.latitude,
+      longitude: response.data.longitude
+    };
+  } catch (error) {
+    console.error('Location lookup failed:', error);
+    return {};
+  }
+}
+
+// Enhanced image processing function
 async function getImageBufferFromUrl(url) {
   try {
     const response = await axios.get(url, {
       responseType: 'arraybuffer',
-      timeout: 5000
+      timeout: 10000,
+      maxRedirects: 3,
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (compatible; YourApp/1.0)'
+      }
     });
+    
+    // Validate image size
+    if (response.data.length > 5 * 1024 * 1024) { // 5MB limit
+      throw new Error('Image too large');
+    }
     
     return await sharp(response.data)
       .resize(300, 300, {
         fit: 'cover',
-        position: 'center'
+        position: 'center',
+        withoutEnlargement: true
       })
       .jpeg({ 
-        quality: 80,
-        mozjpeg: true 
+        quality: 85,
+        mozjpeg: true,
+        progressive: true
       })
       .toBuffer();
   } catch (error) {
@@ -289,25 +526,34 @@ async function getImageBufferFromUrl(url) {
   }
 }
 
-// Enhanced image download function
-async function getImageBufferFromUrl(url) {
+// Helper function to send welcome email
+async function sendWelcomeEmail(email, username) {
   try {
-    const response = await axios.get(url, { 
-      responseType: 'arraybuffer',
-      timeout: 5000 // 5 second timeout
+    const emailTemplate = `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <h2 style="color: #333;">Welcome to Helper! 🎉</h2>
+        <p>Hi ${username},</p>
+        <p>Your Helper account has been created successfully using Google Sign-In.</p>
+        <p><strong>Account Details:</strong></p>
+        <ul>
+          <li>Username: ${username}</li>
+          <li>Email: ${email}</li>
+        </ul>
+        // <p>You can now access all features of Helper with your Google account.</p>
+        <p>You can now start using Helper to connect with your community!</p>
+        <p>Best regards,<br>The Helper Team</p>
+      </div>
+    `;
+
+    await transporter.sendMail({
+      from: process.env.EMAIL_USER,
+      to: email,
+      subject: 'Welcome to Helper - Account Created!',
+      html: emailTemplate,
     });
-    
-    return await sharp(response.data)
-      .resize({ width: 300, height: 300, fit: 'cover' })
-      .jpeg({ 
-        quality: 80,
-        mozjpeg: true 
-      })
-      .toBuffer();
-      
   } catch (error) {
-    console.error("Failed to process profile picture:", error);
-    return null;
+    console.error('Error sending welcome email:', error);
+    throw error;
   }
 }
 
