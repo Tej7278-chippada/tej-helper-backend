@@ -20,6 +20,8 @@ const PostSchema = new mongoose.Schema({
       'VehicleRental', 
       'FurnitureRental',
       'Laundry', 
+      'Events',
+      'Playgrounds',
       'Cleaning', 
       'Cooking', 
       'Tutoring', 
