@@ -59,4 +59,48 @@ router.patch('/updateAccountStatus', authMiddleware, async (req, res) => {
   }
 });
 
+router.get('/filterUsers', authMiddleware, async (req, res) => {
+  try {
+    const { status } = req.query;
+    
+    let filter = {};
+    if (status && status !== 'all') {
+      filter.accountStatus = status;
+    }
+
+    const users = await User.find(filter)
+      .select('-password -otp -otpExpiry -otpAttempts -profilePic')
+      .sort({ createdAt: -1 }); // Sort by newest first
+
+    res.status(200).json(users);
+  } catch (err) {
+    console.error('Error filtering users:', err);
+    res.status(500).json({ message: 'Error filtering users', error: err.message });
+  }
+});
+
+// routes/adminRoutes.js (add this route before module.exports)
+router.get('/userCounts', authMiddleware, async (req, res) => {
+  try {
+    const counts = await Promise.all([
+      User.countDocuments({}),
+      User.countDocuments({ accountStatus: 'active' }),
+      User.countDocuments({ accountStatus: 'inactive' }),
+      User.countDocuments({ accountStatus: 'suspended' }),
+      User.countDocuments({ accountStatus: 'deleted' })
+    ]);
+
+    res.status(200).json({
+      all: counts[0],
+      active: counts[1],
+      inactive: counts[2],
+      suspended: counts[3],
+      deleted: counts[4]
+    });
+  } catch (err) {
+    console.error('Error getting user counts:', err);
+    res.status(500).json({ message: 'Error getting user counts', error: err.message });
+  }
+});
+
 module.exports = router;

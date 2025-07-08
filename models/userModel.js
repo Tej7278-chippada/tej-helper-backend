@@ -90,7 +90,8 @@ const userSchema = new mongoose.Schema({
   accountStatus: { 
     type: String, 
     enum: ['active', 'inactive', 'suspended', 'deleted'], 
-    default: 'inactive' 
+    default: 'inactive',
+    index: true // Add index for better performance
   },
   failedLoginAttempts: { 
     type: Number, 
