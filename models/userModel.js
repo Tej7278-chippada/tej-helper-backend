@@ -2,6 +2,7 @@
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
+const mongoosePaginate = require('mongoose-paginate-v2');
 
 // Enhanced user code generation with collision handling
 const generateUserCode = async () => {
@@ -232,5 +233,6 @@ userSchema.methods.comparePassword = async function (inputPassword) {
   }
 };
 
+userSchema.plugin(mongoosePaginate);
 const User = mongoose.model('User', userSchema);
 module.exports = User;
