@@ -28,6 +28,8 @@ const PostSchema = new mongoose.Schema({
       'PetCare', 
       'Delivery', 
       'Maintenance', 
+      'HouseSaleLease',
+      'LandSaleLease',
       'Other'
     ], required: function() { return this.postType === 'ServiceOffering'; }
   },
