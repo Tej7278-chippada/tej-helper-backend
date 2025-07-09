@@ -63,6 +63,7 @@ app.use('/api/chats', require('./routes/chatRoutes'));
 app.use('/api/notifications', require('./routes/notificationRoutes'));
 app.use('/api/banner', require('./routes/bannerRoutes'));
 app.use('/api/admin', require('./routes/adminRoutes'));
+app.use('/api/feedback', require('./routes/feedbackRoutes'));
 
 // Define your route to serve images by ID
 // app.get('/:id', async (req, res) => {
