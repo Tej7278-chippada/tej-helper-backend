@@ -54,7 +54,7 @@ router.post('/addFeedback', authMiddleware, upload.array('media', 3), async (req
 });
 
 // Get all feedbacks by admin - FIXED
-router.get('/user-feedbacks', authMiddleware, async (req, res) => {
+router.get('/all-feedbacks', authMiddleware, async (req, res) => {
   try {
     // Fixed: Added .find() and .populate() to get user details
     const feedbacks = await feedbackModel.find().populate('userId', 'name email username');
@@ -73,6 +73,35 @@ router.get('/user-feedbacks', authMiddleware, async (req, res) => {
   } catch (err) {
     console.error('Error fetching users feedbacks:', err);
     res.status(500).json({ message: 'Failed to fetch users feedbacks' });
+  }
+});
+
+// Update feedback status (admin only)
+router.put('/update-feedback/:id', authMiddleware, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status, adminNotes } = req.body;
+
+    // Check if user is admin
+    // const user = await User.findById(req.user.id);
+    // if (!user || !user.isAdmin) {
+    //   return res.status(403).json({ message: 'Unauthorized' });
+    // }
+
+    const updatedFeedback = await feedbackModel.findByIdAndUpdate(
+      id,
+      { status, adminNotes, updatedAt: Date.now() },
+      { new: true }
+    );
+
+    if (!updatedFeedback) {
+      return res.status(404).json({ message: 'Feedback not found' });
+    }
+
+    res.status(200).json(updatedFeedback);
+  } catch (err) {
+    console.error('Error updating feedback:', err);
+    res.status(500).json({ message: 'Failed to update feedback', error: err.message });
   }
 });
 
