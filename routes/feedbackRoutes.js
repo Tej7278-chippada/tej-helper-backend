@@ -105,5 +105,55 @@ router.put('/update-feedback/:id', authMiddleware, async (req, res) => {
   }
 });
 
+// Delete feedback and all related data (only by the admin)
+router.delete('/:id', authMiddleware, async (req, res) => {
+  const { id } = req.params;
+  // const userId = req.user.id;
+  
+  // console.log(`[Banner Deletion] Starting deletion process for banner ID: ${id} by user ID: ${userId}`);
+
+  try {
+    // Verify feedback exists and belongs to user
+    const feedback = await feedbackModel.findOne({ _id: id });
+    if (!feedback) {
+      console.log(`[Feedback Deletion] Feedback not found or unauthorized access attempt`);
+      return res.status(403).json({ message: 'You are not authorized to delete this banner' });
+    }
+
+    // Start transaction to ensure atomic operations
+    const session = await mongoose.startSession();
+    session.startTransaction();
+    
+    try {
+      console.log(`[Feedback Deletion] Deleting feedback ${id} and related data`);
+      
+      // 1. Delete the feedback
+      await feedbackModel.deleteOne({ _id: id }).session(session);
+      
+      
+      // Commit the transaction
+      await session.commitTransaction();
+      console.log(`[Feedback Deletion] Successfully deleted feedback ${id} and all related data`);
+      
+      res.json({ 
+        message: 'Feedback and all related data deleted successfully',
+      });
+    } catch (error) {
+      // If any error occurs, abort the transaction
+      await session.abortTransaction();
+      console.error(`[Feedback Deletion] Error during transaction for feedback ${id}:`, error);
+      throw error;
+    } finally {
+      session.endSession();
+    }
+  } catch (err) {
+    console.error(`[Feedback Deletion] Error deleting feedback ${id}:`, err);
+    res.status(500).json({ 
+      message: 'Error deleting feedback and related data',
+      error: err.message 
+    });
+  }
+});
+
 
 module.exports = router;
