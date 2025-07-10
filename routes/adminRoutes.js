@@ -1,11 +1,12 @@
 const express = require('express');
 const router = express.Router();
 const { default: mongoose } = require('mongoose');
-const authMiddleware = require("../middleware/authMiddleware");
+// const authMiddleware = require("../middleware/authMiddleware");
 const User = require("../models/userModel");
+const adminAuth = require('../middleware/adminAuth');
 
 // routes/adminRoutes.js
-router.get('/searchUsers', authMiddleware, async (req, res) => {
+router.get('/searchUsers', adminAuth, async (req, res) => {
   try {
     const { query, page = 1, limit = 20 } = req.query;
     
@@ -45,7 +46,7 @@ router.get('/searchUsers', authMiddleware, async (req, res) => {
   }
 });
 
-router.patch('/updateAccountStatus', authMiddleware, async (req, res) => {
+router.patch('/updateAccountStatus', adminAuth, async (req, res) => {
   try {
     const { userId, status } = req.body;
     
@@ -74,7 +75,7 @@ router.patch('/updateAccountStatus', authMiddleware, async (req, res) => {
   }
 });
 
-router.get('/filterUsers', authMiddleware, async (req, res) => {
+router.get('/filterUsers', adminAuth, async (req, res) => {
   try {
     const { status, page = 1, limit = 20, search } = req.query;
     
@@ -117,7 +118,7 @@ router.get('/filterUsers', authMiddleware, async (req, res) => {
 });
 
 // routes/adminRoutes.js (add this route before module.exports)
-router.get('/userCounts', authMiddleware, async (req, res) => {
+router.get('/userCounts', adminAuth, async (req, res) => {
   try {
     const counts = await Promise.all([
       User.countDocuments({}),

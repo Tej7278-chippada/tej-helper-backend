@@ -3,11 +3,12 @@ const express = require('express');
 const multer = require('multer');
 const router = express.Router();
 const sharp = require('sharp');
-const authMiddleware = require('../middleware/authMiddleware');
+// const authMiddleware = require('../middleware/authMiddleware');
 const User = require('../models/userModel');
 const axios = require("axios");
 const { default: mongoose } = require('mongoose');
 const bannerModel = require('../models/bannerModel');
+const adminAuth = require('../middleware/adminAuth');
 
 
 // Initialize multer with the storage configuration
@@ -17,7 +18,7 @@ const upload = multer({
 });
 
 // Add banner (only by authenticated user)
-router.post('/addBanner', authMiddleware, upload.array('media', 8), async (req, res) => {
+router.post('/addBanner', adminAuth, upload.array('media', 8), async (req, res) => {
   try {
     const { title } = req.body;
 
@@ -54,7 +55,7 @@ router.post('/addBanner', authMiddleware, upload.array('media', 8), async (req, 
 });
 
 // route to fetch images related to title text from unsplash by authenticated user
-router.get("/generate-images", authMiddleware, async (req, res) => {
+router.get("/generate-images", adminAuth, async (req, res) => {
   try {
     const { query } = req.query;
 
@@ -81,7 +82,7 @@ router.get("/generate-images", authMiddleware, async (req, res) => {
 
 
 // Get banners by authenticated user
-router.get('/my-banners', authMiddleware, async (req, res) => {
+router.get('/my-banners', adminAuth, async (req, res) => {
   try {
     const userId = req.user.id;
     const banners = await bannerModel.find({ userId });
@@ -132,7 +133,7 @@ router.get('/bannerMedia/:bannerId',  async (req, res) => {
 
 
 // Update banner (only by the user who added it)
-router.put('/:id', authMiddleware, upload.array('media', 8), async (req, res) => {
+router.put('/:id', adminAuth, upload.array('media', 8), async (req, res) => {
   try {
     const { id } = req.params;
     const userId = req.user.id;
@@ -177,7 +178,7 @@ router.put('/:id', authMiddleware, upload.array('media', 8), async (req, res) =>
 });
 
 // Delete banner and all related data (only by the user who posted it)
-router.delete('/:id', authMiddleware, async (req, res) => {
+router.delete('/:id', adminAuth, async (req, res) => {
   const { id } = req.params;
   const userId = req.user.id;
   

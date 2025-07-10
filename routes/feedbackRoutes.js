@@ -8,6 +8,7 @@ const User = require('../models/userModel');
 const axios = require("axios");
 const { default: mongoose } = require('mongoose');
 const feedbackModel = require('../models/feedbackModel');
+const adminAuth = require('../middleware/adminAuth');
 
 
 // Initialize multer with the storage configuration
@@ -54,7 +55,7 @@ router.post('/addFeedback', authMiddleware, upload.array('media', 3), async (req
 });
 
 // Get all feedbacks by admin - FIXED
-router.get('/all-feedbacks', authMiddleware, async (req, res) => {
+router.get('/all-feedbacks', adminAuth, async (req, res) => {
   try {
     // Fixed: Added .find() and .populate() to get user details
     const feedbacks = await feedbackModel.find().populate('userId', 'name email username');
@@ -77,7 +78,7 @@ router.get('/all-feedbacks', authMiddleware, async (req, res) => {
 });
 
 // Update feedback status (admin only)
-router.put('/update-feedback/:id', authMiddleware, async (req, res) => {
+router.put('/update-feedback/:id', adminAuth, async (req, res) => {
   try {
     const { id } = req.params;
     const { status, adminNotes } = req.body;
@@ -106,7 +107,7 @@ router.put('/update-feedback/:id', authMiddleware, async (req, res) => {
 });
 
 // Delete feedback and all related data (only by the admin)
-router.delete('/:id', authMiddleware, async (req, res) => {
+router.delete('/:id', adminAuth, async (req, res) => {
   const { id } = req.params;
   // const userId = req.user.id;
   

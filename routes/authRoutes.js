@@ -177,7 +177,7 @@ router.post('/login', async (req, res) => {
     await user.save();
 
     // Generate a JWT token valid for a specified period
-    const authToken = jwt.sign({ id: user._id, tokenUsername: user.username }, process.env.JWT_SECRET, {
+    const authToken = jwt.sign({ id: user._id, tokenUsername: user.username, userRole: user.userRole  }, process.env.JWT_SECRET, {
       expiresIn: process.env.JWT_EXPIRES_IN || '1h',
     });
     // console.log('Login successful:', user); // Log successful login
@@ -371,6 +371,7 @@ router.post('/google', oauthLimiter, async (req, res) => {
       { 
         id: user._id, 
         tokenUsername: user.username,
+        userRole: user.userRole,
         // email: user.email,
         // loginMethod: 'google',
         // isGoogleUser: true,

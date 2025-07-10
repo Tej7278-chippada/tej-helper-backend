@@ -88,6 +88,11 @@ const userSchema = new mongoose.Schema({
   },
 
   // Security fields
+  userRole: {
+    type: String,
+    enum: ['user', 'admin'],
+    // default: 'user'
+  },
   accountStatus: { 
     type: String, 
     enum: ['active', 'inactive', 'suspended', 'deleted'], 
