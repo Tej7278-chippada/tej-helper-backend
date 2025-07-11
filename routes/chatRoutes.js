@@ -121,7 +121,8 @@ router.get('/chatsOfPost', authMiddleware, async (req, res) => {
           username: buyer.username,
           profilePic: buyer.profilePic ? buyer.profilePic.toString('base64') : null,
           unreadMessagesCount: unreadCount,
-          lastMessageAt: chat ? chat.lastMessageAt : null
+          lastMessageAt: chat ? chat.lastMessageAt : null,
+          chatId: chat.id
         };
       }));
 
